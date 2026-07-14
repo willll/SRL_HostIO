@@ -59,6 +59,50 @@ All frames transmitted over the DevCart USB FIFO use big-endian encoding for mul
 
 ---
 
+## Host-Side File Management Examples (using `ftx`)
+
+When the `SRL_HostIO` sample application is running on the Sega Saturn, the [ftx](https://github.com/willll/ftx) CLI tool can be used on the host PC to manage files and directories:
+
+### Directory Listing (`List`)
+List files and directories on the SD card:
+```bash
+./ftx --ls /
+```
+Get a detailed directory listing containing file sizes, attributes, and modification timestamps:
+```bash
+./ftx -l --ls /SD_TEST
+```
+
+### File Upload (`Upload`)
+Copy a local file from the host PC onto the target Saturn's SD card FAT filesystem:
+```bash
+./ftx --cp data.bin /test_folder/data.bin
+```
+
+### Directory Management (`Mkdir` / `Rmdir`)
+Create a new directory on the SD card:
+```bash
+./ftx --mkdir /new_folder
+```
+Delete an empty directory from the SD card:
+```bash
+./ftx --rmdir /new_folder
+```
+
+### File Deletion (`Remove`)
+Delete a file on the SD card:
+```bash
+./ftx --rm /test_folder/data.bin
+```
+
+### File Checksum (`Crc`)
+Calculate and verify the CRC-8 checksum of a file on the target device (supports files on the SD card or CD-ROM):
+```bash
+./ftx --crc /test_folder/data.bin
+```
+
+---
+
 ## Project Structure
 
 ```

@@ -22,52 +22,78 @@ namespace SRL
     {
         namespace SD
         {
-           
 
+
+            /** @brief Base address where SGCLIB binary/stub is loaded in memory. */
             constexpr uintptr_t kSgclibBaseAddress = 0x060BA000UL;
+            /** @brief Offset in SGCLIB memory for the DIR object. */
             constexpr uintptr_t kSgclibDirOffset = 0x4F00UL;
+            /** @brief Offset in SGCLIB memory for the hidden f_readdir function pointer. */
             constexpr uintptr_t kSgclibFReaddirOffset = 0x3B80UL;
+            /** @brief Maximum path length in bytes. */
             constexpr size_t kMaxPathBytes = 255;
 
+            /** @brief Function pointer type for SGCLIB initialization. */
             typedef int (*Fct_sgc_init)(void);
+            /** @brief Function pointer type for opening a file in SGCLIB. */
             typedef int (*Fct_sgc_open)(const char *filename, int flags);
+            /** @brief Function pointer type for closing a file descriptor in SGCLIB. */
             typedef int (*Fct_sgc_close)(int fd);
+            /** @brief Function pointer type for reading from a file in SGCLIB. */
             typedef int (*Fct_sgc_read)(int fd, void *buf, int len);
+            /** @brief Function pointer type for writing to a file in SGCLIB. */
             typedef int (*Fct_sgc_write)(int fd, const void *buf, int len);
+            /** @brief Function pointer type for getting file status metadata in SGCLIB. */
             typedef int (*Fct_sgc_stat)(const char *filename, sgc_stat_t *stat, int statsize);
+            /** @brief Function pointer type for unlinking/removing a file in SGCLIB. */
             typedef int (*Fct_sgc_unlink)(const char *filename);
+            /** @brief Function pointer type for opening a directory in SGCLIB. */
             typedef int (*Fct_sgc_opendir)(const char *path);
+            /** @brief Function pointer type for changing the current directory in SGCLIB. */
             typedef int (*Fct_sgc_chdir)(const char *path);
+            /** @brief Function pointer type for getting the current working directory in SGCLIB. */
             typedef int (*Fct_sgc_getcwd)(char *buff, int buflen);
 
+            /**
+             * @brief Structure mapping the SGCLIB API function pointers loaded at the base address.
+             */
             typedef struct _sgclib_api_t
             {
-                Fct_sgc_init init;
-                Fct_sgc_open open;
-                Fct_sgc_close close;
-                Fct_sgc_read read;
-                Fct_sgc_write write;
-                Fct_sgc_stat stat;
-                Fct_sgc_unlink unlink;
-                Fct_sgc_opendir opendir;
-                Fct_sgc_chdir chdir;
-                Fct_sgc_getcwd getcwd;
+                Fct_sgc_init init;       /**< Init driver function pointer */
+                Fct_sgc_open open;       /**< Open file function pointer */
+                Fct_sgc_close close;     /**< Close file function pointer */
+                Fct_sgc_read read;       /**< Read file function pointer */
+                Fct_sgc_write write;     /**< Write file function pointer */
+                Fct_sgc_stat stat;       /**< Stat file function pointer */
+                Fct_sgc_unlink unlink;   /**< Unlink file function pointer */
+                Fct_sgc_opendir opendir; /**< Open directory function pointer */
+                Fct_sgc_chdir chdir;     /**< Change directory function pointer */
+                Fct_sgc_getcwd getcwd;   /**< Get CWD function pointer */
             } __attribute__((packed)) sgclib_api_t;
 
             /** @brief Returns the SGCLIB API pointer. */
             static inline sgclib_api_t *sgclib_api()
             {
-                return reinterpret_cast<sgclib_api_t*>(kSgclibBaseAddress);
+                return reinterpret_cast<sgclib_api_t *>(kSgclibBaseAddress);
             }
 
+            /** @brief Function pointer type for the hidden FatFs f_readdir function. */
             using HiddenFReaddir = int (*)(DIR *dp, FILINFO *fno);
 
+            /**
+             * @brief Gets the function pointer to the hidden f_readdir implementation.
+             * @return A function pointer to the hidden f_readdir function.
+             */
             HiddenFReaddir GetHiddenFReaddir()
             {
                 return reinterpret_cast<HiddenFReaddir>(kSgclibBaseAddress +
                                                         kSgclibFReaddirOffset);
             }
 
+            /**
+             * @brief Gets the pointer to the hidden DIR object instance within SGCLIB memory space.
+             * @return A pointer to the DIR object.
+             */
             DIR *GetHiddenDirObject()
             {
                 return reinterpret_cast<DIR *>(kSgclibBaseAddress + kSgclibDirOffset);
@@ -202,23 +228,34 @@ namespace SRL
             }
 
             // Common SD Card Commands
+            /** @brief SD card block size in bytes. */
             constexpr uint32_t BLOCK_SIZE = 512;
+            /** @brief Command to reset the SD card to idle state (CMD0). */
             constexpr uint16_t CMD_GO_IDLE_STATE = 0;
+            /** @brief Command to write a single 512-byte block (CMD24). */
             constexpr uint16_t CMD_WRITE_SINGLE_BLOCK = 24;
+            /** @brief Command to write multiple blocks (CMD25). */
             constexpr uint16_t CMD_WRITE_MULTIPLE_BLOCK = 25;
+            /** @brief Command to terminate a multiple-block write transmission (CMD12). */
             constexpr uint16_t CMD_STOP_TRANSMISSION = 12;
-            // A simple File handle struct
+
+            /**
+             * @brief A simple File handle structure for raw SD sector operations.
+             */
             struct FileHandle
             {
-                uint32_t start_sector;
-                uint32_t current_sector;
-                uint32_t bytes_written;
-                uint32_t file_size;
-                bool is_open;
+                uint32_t start_sector;   /**< The starting sector on the SD card */
+                uint32_t current_sector; /**< The current sector being accessed */
+                uint32_t bytes_written;  /**< Number of bytes written to the file so far */
+                uint32_t file_size;      /**< Total size of the file in bytes */
+                bool is_open;            /**< Flag indicating if the file handle is open */
             };
+
             /**
              * @brief Send a low-level command to the SD Card via the DevCart
              * CPLD/Registers.
+             * @param cmd The SD card command index.
+             * @param arg The 32-bit command argument.
              */
             inline void send_sd_command(uint16_t cmd, uint32_t arg)
             {
@@ -234,8 +271,10 @@ namespace SRL
                 // 3. Send the command index
                 *(volatile uint16_t *)CS0::SDCardRegisters::CART_CMD = cmd;
             }
+
             /**
              * @brief Wait for the SD Card to complete its current operation.
+             * @return True if the SD card became ready; false if timed out.
              */
             inline bool wait_sd_ready()
             {
@@ -323,6 +362,12 @@ namespace SRL
              */
             namespace Backend
             {
+                /**
+                 * @brief Checks if a string starts with a specific literal substring.
+                 * @param input The input string to check.
+                 * @param literal The literal prefix string to match.
+                 * @return True if the input starts with the prefix; false otherwise.
+                 */
                 static inline bool MatchLiteral(const char *input, const char *literal)
                 {
                     if (input == nullptr || literal == nullptr)
@@ -343,6 +388,11 @@ namespace SRL
                     return true;
                 }
 
+                /**
+                 * @brief Converts a hexadecimal character to its numeric value.
+                 * @param c The character to convert.
+                 * @return The numeric value (0-15), or -1 if the character is not valid hex.
+                 */
                 static inline int HexDigitValue(const char c)
                 {
                     if (c >= '0' && c <= '9')
@@ -354,9 +404,16 @@ namespace SRL
                     return -1;
                 }
 
+                /**
+                 * @brief Attempts to parse a 32-bit unsigned integer (decimal or hex) from a string.
+                 * @param begin The start of the string to parse.
+                 * @param end Out-parameter pointing to the first character after the parsed number.
+                 * @param value Reference to store the parsed 32-bit integer.
+                 * @return True if parsing succeeded; false otherwise.
+                 */
                 static inline bool TryParseU32(const char *begin,
-                                               const char **end,
-                                               uint32_t &value)
+                    const char **end,
+                    uint32_t &value)
                 {
                     if (begin == nullptr || end == nullptr)
                     {
@@ -382,7 +439,7 @@ namespace SRL
                         }
 
                         if (parsed > ((0xFFFFFFFFUL - static_cast<uint32_t>(digit)) /
-                                      static_cast<uint32_t>(base)))
+                                         static_cast<uint32_t>(base)))
                         {
                             return false;
                         }
@@ -403,11 +460,21 @@ namespace SRL
                     return true;
                 }
 
+                /**
+                 * @brief Checks if a path is a raw sector path starting with "sdraw:".
+                 * @param path The path to check.
+                 * @return True if the path starts with "sdraw:"; false otherwise.
+                 */
                 static inline bool IsRawPath(const char *path)
                 {
                     return MatchLiteral(path, "sdraw:");
                 }
 
+                /**
+                 * @brief Checks if a path is the raw sector root path ("sdraw:/").
+                 * @param path The path to check.
+                 * @return True if the path is exactly "sdraw:/"; false otherwise.
+                 */
                 static inline bool IsRawRootPath(const char *path)
                 {
                     if (path == nullptr)
@@ -419,9 +486,16 @@ namespace SRL
                            path[6] == '/' && path[7] == '\0';
                 }
 
+                /**
+                 * @brief Parses a raw sector range string of the format "sdraw:<start_sector>:<sector_count>".
+                 * @param path The raw path string to parse.
+                 * @param startSector Reference to store the parsed start sector.
+                 * @param sectorCount Reference to store the parsed sector count.
+                 * @return True if parsing succeeded and a valid range was extracted; false otherwise.
+                 */
                 static inline bool TryParseRawRange(const char *path,
-                                                    uint32_t &startSector,
-                                                    uint32_t &sectorCount)
+                    uint32_t &startSector,
+                    uint32_t &sectorCount)
                 {
                     if (!IsRawPath(path) || IsRawRootPath(path))
                     {
@@ -448,6 +522,12 @@ namespace SRL
                     return sectorCount > 0;
                 }
 
+                /**
+                 * @brief Erases/zeroes out a range of raw sectors on the SD card.
+                 * @param startSector The start sector to begin zeroing.
+                 * @param sectorCount The number of sectors to zero out.
+                 * @return True if the range was successfully zeroed; false otherwise.
+                 */
                 static inline bool EraseRawRange(uint32_t startSector, uint32_t sectorCount)
                 {
                     if (sectorCount == 0)
