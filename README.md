@@ -124,6 +124,41 @@ SRL_HostIO/
 
 ---
 
+## Including SRL_HostIO in an SRL Project
+
+If your project uses the SRL build system, add `SRL_HostIO` to `MODULES_EXTRA` in your project Makefile:
+
+```makefile
+MODULES_EXTRA = SRL_HostIO
+```
+
+The SRL shared makefile automatically adds `modules_extra/SRL_HostIO/INC` to the include path and copies any `cd/data/` files into the project image during build.
+
+### Git integration
+
+If `SRL_HostIO` is not already present in your repository, add it as a Git submodule under `modules_extra`:
+
+```bash
+git submodule add https://github.com/willll/SRL_HostIO.git modules_extra/SRL_HostIO
+git submodule update --init --recursive
+```
+
+If you already have the module configuration in `.gitmodules`, update it with:
+
+```bash
+git submodule update --init --recursive modules_extra/SRL_HostIO
+```
+
+Then include the HostIO header in your code:
+
+```cpp
+#include <hostio.hpp>
+```
+
+If you want to use the sample application instead of just the header, see `Samples/Debug - File transfer/makefile` for a real SRL project example.
+
+---
+
 ## Core API Reference
 
 ### `INC/hostio.hpp`
