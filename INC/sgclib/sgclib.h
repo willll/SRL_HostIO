@@ -13,6 +13,7 @@
 #include <stdarg.h>
 
 #include <stdint.h>
+#include "fatfs/ff.h"
 
 #define C_SEEK_SET  0
 #define C_SEEK_CUR  1
@@ -115,5 +116,30 @@ typedef struct _sgclib_api_t
 
 #define SGCLIB_API ((sgclib_api_t*)0x060BA000)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int sgc_init(void);
+int sgc_open(const char *filename, int flags);
+int sgc_close(int fd);
+int sgc_seek(int fd, int offset, int whence);
+int sgc_read(int fd, void *buf, int len);
+int sgc_write(int fd, const void *buf, int len);
+int sgc_sync(int fd);
+int sgc_truncate(int fd);
+int sgc_stat(const char *filename, sgc_stat_t *stat, int statsize);
+int sgc_rename(const char *oldname, const char *newname);
+int sgc_mkdir(const char *filename);
+int sgc_unlink(const char *filename);
+int sgc_opendir(const char *path);
+int sgc_chdir(const char *path);
+int sgc_getcwd(char *buff, int buflen);
+
+extern DIR dir;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _SGCLIB_H_

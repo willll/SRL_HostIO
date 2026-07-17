@@ -40,7 +40,9 @@ SOURCES += ../../INC/fatfs/ff.c \
            ../../INC/fatfs/diskio.c \
            ../../INC/fatfs/ffsystem.c \
            ../../INC/fatfs/ffunicode.c \
-           ../../INC/sgclib/binwrap.s
+           ../../INC/sgclib/api_functions.c \
+           ../../INC/sgclib/log.c \
+           ../../INC/sgclib/sdcard_packet.c
 
 # Include shared makefile
 SDK_ROOT = $(SRL_INSTALL_ROOT)/saturnringlib

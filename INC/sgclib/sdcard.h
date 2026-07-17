@@ -233,89 +233,30 @@ typedef struct _sdcard_t
 
 
 /* -------------------------------------------------------------------------- */
-/* SGCLIB binary dispatch wrappers                                             */
-/*
- * sdc_* functions are implemented in sgclib.bin and loaded at 0x060BA000.
- * Use these inline wrappers from regular C/C++ code paths.
- */
-#ifndef SGCLIB_BIN_BASE_ADDR
-#define SGCLIB_BIN_BASE_ADDR 0x060BA000UL
+/* SGCLIB direct link declarations                                            */
+/* -------------------------------------------------------------------------- */
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#define SDC_BIN_FN(_ret_, _ofs_, ...) \
-  ((_ret_ (*)(__VA_ARGS__))((uintptr_t)SGCLIB_BIN_BASE_ADDR + (uintptr_t)(_ofs_)))
+int sdc_is_reinsert(void);
+sdc_ret_t sdc_init(void);
+unsigned char sdc_sendpacket(unsigned char cmd, unsigned long arg, unsigned char* buffer, unsigned long blocks_count);
+unsigned char sdc_read_multiple_blocks(unsigned long start_block, unsigned char* buffer, unsigned long blocks_count);
+unsigned char sdc_write_multiple_blocks(unsigned long start_block, unsigned char* buffer, unsigned long blocks_count);
+sdc_ret_t sdc_ledset(unsigned long led_color, unsigned long led_state);
+void sdc_output(void);
+void sdc_cs_assert(void);
+void sdc_cs_deassert(void);
+void sdc_sendbyte_array(unsigned char* ptr, unsigned short len);
+void sdc_sendbyte(unsigned char dat);
+void sdc_sendlong(unsigned long dat);
+void sdc_receivebyte_array(unsigned char* ptr, unsigned short len);
+unsigned char sdc_receivebyte(void);
 
-static inline int sdc_is_reinsert(void)
-{
-    return SDC_BIN_FN(int, 0x0A24UL, void)();
+#ifdef __cplusplus
 }
-
-static inline sdc_ret_t sdc_init(void)
-{
-    return SDC_BIN_FN(sdc_ret_t, 0x0F6CUL, void)();
-}
-
-static inline unsigned char sdc_sendpacket(unsigned char cmd, unsigned long arg, unsigned char* buffer, unsigned long blocks_count)
-{
-    return SDC_BIN_FN(unsigned char, 0x0A30UL, unsigned char, unsigned long, unsigned char*, unsigned long)(cmd, arg, buffer, blocks_count);
-}
-
-static inline unsigned char sdc_read_multiple_blocks(unsigned long start_block, unsigned char* buffer, unsigned long blocks_count)
-{
-    return SDC_BIN_FN(unsigned char, 0x14ECUL, unsigned long, unsigned char*, unsigned long)(start_block, buffer, blocks_count);
-}
-
-static inline unsigned char sdc_write_multiple_blocks(unsigned long start_block, unsigned char* buffer, unsigned long blocks_count)
-{
-    return SDC_BIN_FN(unsigned char, 0x156CUL, unsigned long, unsigned char*, unsigned long)(start_block, buffer, blocks_count);
-}
-
-static inline sdc_ret_t sdc_ledset(unsigned long led_color, unsigned long led_state)
-{
-    return SDC_BIN_FN(sdc_ret_t, 0x0794UL, unsigned long, unsigned long)(led_color, led_state);
-}
-
-static inline void sdc_output(void)
-{
-    SDC_BIN_FN(void, 0x0770UL, void)();
-}
-
-static inline void sdc_cs_assert(void)
-{
-    SDC_BIN_FN(void, 0x07BCUL, void)();
-}
-
-static inline void sdc_cs_deassert(void)
-{
-    SDC_BIN_FN(void, 0x07D8UL, void)();
-}
-
-static inline void sdc_sendbyte_array(unsigned char* ptr, unsigned short len)
-{
-    SDC_BIN_FN(void, 0x07F4UL, unsigned char*, unsigned short)(ptr, len);
-}
-
-static inline void sdc_sendbyte(unsigned char dat)
-{
-    SDC_BIN_FN(void, 0x0878UL, unsigned char)(dat);
-}
-
-static inline void sdc_sendlong(unsigned long dat)
-{
-    SDC_BIN_FN(void, 0x0894UL, unsigned long)(dat);
-}
-
-static inline void sdc_receivebyte_array(unsigned char* ptr, unsigned short len)
-{
-    SDC_BIN_FN(void, 0x08C4UL, unsigned char*, unsigned short)(ptr, len);
-}
-
-static inline unsigned char sdc_receivebyte(void)
-{
-    return SDC_BIN_FN(unsigned char, 0x0978UL, void)();
-}
-
-#undef SDC_BIN_FN
+#endif
 
 #endif /* _SDCARD_INCLUDE_H_ */
 

@@ -17,7 +17,6 @@ namespace
     constexpr size_t kMaxDirEntries = 96;
 
     bool g_sgcReady = false;
-    bool g_sgcStubLoaded = false;
     FATFS g_fatfs;
 
     constexpr size_t kMaxPathBytes = 255;
@@ -80,29 +79,6 @@ namespace
         return crc;
     }
 
-    extern "C" {
-    extern unsigned char __sgclib_stub_dat;
-    extern unsigned char __sgclib_stub_end;
-    }
-
-  /**
-     * @brief Ensures that the SGCLIB (SD Cart) stub is loaded into memory.
-     *
-     * The SGCLIB stub provides low-level SD card access routines.
-     */
-    void EnsureSgclibStubLoaded()
-    {
-        if (g_sgcStubLoaded)
-        {
-            return;
-        }
-
-        const unsigned char *stubPtr = &__sgclib_stub_dat;
-        const size_t stubSize = static_cast<size_t>(&__sgclib_stub_end - &__sgclib_stub_dat);
-        SRL::DevCart::SD::fs_load_stub(stubPtr, stubSize);
-        g_sgcStubLoaded = true;
-    }
-
   /**
      * @brief Ensures that the SGCLIB and FAT file system are initialized and mounted.
      * @return True if the SD card is successfully mounted; false otherwise.
@@ -114,7 +90,6 @@ namespace
             return true;
         }
 
-        EnsureSgclibStubLoaded();
         const int initRes = SRL::DevCart::SD::fs_init();
         if (initRes != 0)
         {
@@ -490,6 +465,47 @@ namespace
     }
 
   /**
+     * @brief Handles a request from the host to rename or move a file or directory.
+     *
+     * @param path The payload containing both the old and new path.
+     * @param response Buffer to write the response string into.
+     * @param responseLen Reference to the length of the written response string.
+     * @return The status of the operation (e.g., Ok, BadRequest, Error).
+     */
+    SRL::DevCart::HostIo::Status HandleRename(const char *path, char *response,
+        size_t &responseLen)
+    {
+        const char *oldPath = path;
+        const char *newPath = path + strlen(oldPath) + 1;
+
+        if (IsSdFsPath(oldPath) && IsSdFsPath(newPath))
+        {
+            if (!EnsureSgclibReady())
+            {
+                APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+                    "[DoRename] SGCLIB init failed\n");
+                return SRL::DevCart::HostIo::Status::Error;
+            }
+
+            const FRESULT rc = f_rename(oldPath, newPath);
+            if (rc != FR_OK)
+            {
+                APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+                    "[DoRename] Rename failed (%d): %s -> %s\n", rc, oldPath, newPath);
+                return SRL::DevCart::HostIo::Status::Error;
+            }
+
+            APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+                "[DoRename] Renamed: %s -> %s\n", oldPath, newPath);
+            return SRL::DevCart::HostIo::Status::Ok;
+        }
+
+        APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+            "[DoRename] Read-only or unsupported path: %s -> %s\n", oldPath, newPath);
+        return SRL::DevCart::HostIo::Status::Unsupported;
+    }
+
+  /**
      * @brief Handles a request from the host to calculate the CRC-8 checksum of a file.
      *
      * Supports both SD FAT files and standard CD/host filesystem files.
@@ -675,6 +691,87 @@ namespace
         return SRL::DevCart::HostIo::Status::Unsupported;
     }
 
+    /**
+     * @brief Handles a request from the host to download a file from the SD card.
+     *
+     * The download protocol consists of:
+     * 1. Sending a protocol response with the 4-byte file size as payload.
+     * 2. Sending the file data in chunks.
+     * 3. Sending the 1-byte CRC-8 checksum to the host.
+     *
+     * @param path The source path on the SD card FAT filesystem.
+     * @param response Buffer to write the response string into (used for errors).
+     * @param responseLen Reference to the length of the written response string.
+     * @return The status of the operation, typically Handled as the response is manual.
+     */
+    SRL::DevCart::HostIo::Status HandleDownload(const char *path, char *response,
+        size_t &responseLen)
+    {
+        if (IsSdFsPath(path))
+        {
+            if (!EnsureSgclibReady())
+            {
+                APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+                    "[DoDownload] SGCLIB init failed\n");
+                return SRL::DevCart::HostIo::Status::Error;
+            }
+
+            FIL file;
+            const FRESULT openRes = f_open(&file, path, FA_READ);
+            if (openRes != FR_OK)
+            {
+                APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+                    "[DoDownload] Can't open file '%s' for reading\n", path);
+                return SRL::DevCart::HostIo::Status::Error;
+            }
+
+            uint32_t file_size = f_size(&file);
+
+            // 1. Tell host we are ready & send file size (4 bytes, Big Endian)
+            uint8_t size_buf[4] = {
+                static_cast<uint8_t>((file_size >> 24) & 0xFFU),
+                static_cast<uint8_t>((file_size >> 16) & 0xFFU),
+                static_cast<uint8_t>((file_size >> 8) & 0xFFU),
+                static_cast<uint8_t>(file_size & 0xFFU)
+            };
+            SRL::DevCart::HostIo::SendResponse(SRL::DevCart::HostIo::Status::Ok, size_buf, 4);
+
+            // 2. Send File Data & Calculate CRC
+            uint8_t buffer[4096];
+            uint32_t sent = 0;
+            uint8_t checksum = 0;
+            while (sent < file_size)
+            {
+                uint32_t chunk = file_size - sent;
+                if (chunk > sizeof(buffer))
+                {
+                    chunk = sizeof(buffer);
+                }
+                UINT br = 0;
+                f_read(&file, buffer, chunk, &br);
+                if (br == 0)
+                {
+                    break;
+                }
+
+                checksum = Crc8Update(checksum, buffer, br);
+                SRL::DevCart::HostIo::WriteAll(buffer, br);
+                sent += br;
+            }
+
+            f_close(&file);
+
+            // 3. Send Checksum
+            SRL::DevCart::HostIo::WriteAll(&checksum, 1);
+
+            return SRL::DevCart::HostIo::Status::Handled;
+        }
+
+        APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
+            "[DoDownload] Unsupported path: %s\n", path);
+        return SRL::DevCart::HostIo::Status::Unsupported;
+    }
+
     const int kShellStartY = 2;
     const int kShellMaxY = 27;
     int g_shellY = kShellStartY;
@@ -757,11 +854,17 @@ namespace
         case SRL::DevCart::HostIo::Command::Upload:
             commandName = "UPLOAD";
             break;
+        case SRL::DevCart::HostIo::Command::Download:
+            commandName = "DOWNLOAD";
+            break;
         case SRL::DevCart::HostIo::Command::Mkdir:
             commandName = "MKDIR";
             break;
         case SRL::DevCart::HostIo::Command::Rmdir:
             commandName = "RMDIR";
+            break;
+        case SRL::DevCart::HostIo::Command::Rename:
+            commandName = "MV";
             break;
         default:
             break;
@@ -790,11 +893,17 @@ namespace
         case SRL::DevCart::HostIo::Command::Upload:
             status = HandleUpload(path, response, responseLen);
             break;
+        case SRL::DevCart::HostIo::Command::Download:
+            status = HandleDownload(path, response, responseLen);
+            break;
         case SRL::DevCart::HostIo::Command::Mkdir:
             status = HandleMkdir(path, response, responseLen);
             break;
         case SRL::DevCart::HostIo::Command::Rmdir:
             status = HandleRmdir(path, response, responseLen);
+            break;
+        case SRL::DevCart::HostIo::Command::Rename:
+            status = HandleRename(path, response, responseLen);
             break;
         default:
             APPEND_FMT(response, kMaxResponseBytes + 1, responseLen,
@@ -826,7 +935,7 @@ namespace
 
 int main()
 {
-    SRL::Core::Initialize(HighColor::Colors::Black);make
+    SRL::Core::Initialize(HighColor::Colors::Black);
 
     SRL::Debug::Print(1, 0, "File Transfer - FTX");
 

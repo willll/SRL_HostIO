@@ -56,7 +56,11 @@ namespace SRL
   /** @brief Create directory command. */
                 Mkdir = 5,
   /** @brief Remove directory command. */
-                Rmdir = 6
+                Rmdir = 6,
+  /** @brief Rename/move file or directory command. */
+                Rename = 7,
+  /** @brief Download file command. */
+                Download = 8
             };
 
 /** @brief Status response code identifiers for Saturn-to-host responses.

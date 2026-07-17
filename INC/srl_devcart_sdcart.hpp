@@ -8,6 +8,7 @@
 #include <string.h>
 #include <initializer_list>
 
+
 /**
  * @brief Namespace for interacting with a USB development cartridge for the
  * Sega Saturn.
@@ -23,158 +24,72 @@ namespace SRL
         {
 
 
-            /** @brief Base address where SGCLIB binary/stub is loaded in memory. */
-            constexpr uintptr_t kSgclibBaseAddress = 0x060BA000UL;
-            /** @brief Offset in SGCLIB memory for the DIR object. */
-            constexpr uintptr_t kSgclibDirOffset = 0x4F00UL;
-            /** @brief Offset in SGCLIB memory for the hidden f_readdir function pointer. */
-            constexpr uintptr_t kSgclibFReaddirOffset = 0x3B80UL;
-            /** @brief Maximum path length in bytes. */
-            constexpr size_t kMaxPathBytes = 255;
 
-            /** @brief Function pointer type for SGCLIB initialization. */
-            typedef int (*Fct_sgc_init)(void);
-            /** @brief Function pointer type for opening a file in SGCLIB. */
-            typedef int (*Fct_sgc_open)(const char *filename, int flags);
-            /** @brief Function pointer type for closing a file descriptor in SGCLIB. */
-            typedef int (*Fct_sgc_close)(int fd);
-            /** @brief Function pointer type for reading from a file in SGCLIB. */
-            typedef int (*Fct_sgc_read)(int fd, void *buf, int len);
-            /** @brief Function pointer type for writing to a file in SGCLIB. */
-            typedef int (*Fct_sgc_write)(int fd, const void *buf, int len);
-            /** @brief Function pointer type for getting file status metadata in SGCLIB. */
-            typedef int (*Fct_sgc_stat)(const char *filename, sgc_stat_t *stat, int statsize);
-            /** @brief Function pointer type for unlinking/removing a file in SGCLIB. */
-            typedef int (*Fct_sgc_unlink)(const char *filename);
-            /** @brief Function pointer type for opening a directory in SGCLIB. */
-            typedef int (*Fct_sgc_opendir)(const char *path);
-            /** @brief Function pointer type for changing the current directory in SGCLIB. */
-            typedef int (*Fct_sgc_chdir)(const char *path);
-            /** @brief Function pointer type for getting the current working directory in SGCLIB. */
-            typedef int (*Fct_sgc_getcwd)(char *buff, int buflen);
-
-            /**
-             * @brief Structure mapping the SGCLIB API function pointers loaded at the base address.
-             */
-            typedef struct _sgclib_api_t
-            {
-                Fct_sgc_init init;       /**< Init driver function pointer */
-                Fct_sgc_open open;       /**< Open file function pointer */
-                Fct_sgc_close close;     /**< Close file function pointer */
-                Fct_sgc_read read;       /**< Read file function pointer */
-                Fct_sgc_write write;     /**< Write file function pointer */
-                Fct_sgc_stat stat;       /**< Stat file function pointer */
-                Fct_sgc_unlink unlink;   /**< Unlink file function pointer */
-                Fct_sgc_opendir opendir; /**< Open directory function pointer */
-                Fct_sgc_chdir chdir;     /**< Change directory function pointer */
-                Fct_sgc_getcwd getcwd;   /**< Get CWD function pointer */
-            } __attribute__((packed)) sgclib_api_t;
-
-            /** @brief Returns the SGCLIB API pointer. */
-            static inline sgclib_api_t *sgclib_api()
-            {
-                return reinterpret_cast<sgclib_api_t *>(kSgclibBaseAddress);
-            }
-
-            /** @brief Function pointer type for the hidden FatFs f_readdir function. */
-            using HiddenFReaddir = int (*)(DIR *dp, FILINFO *fno);
-
-            /**
-             * @brief Gets the function pointer to the hidden f_readdir implementation.
-             * @return A function pointer to the hidden f_readdir function.
-             */
-            HiddenFReaddir GetHiddenFReaddir()
-            {
-                return reinterpret_cast<HiddenFReaddir>(kSgclibBaseAddress +
-                                                        kSgclibFReaddirOffset);
-            }
-
-            /**
-             * @brief Gets the pointer to the hidden DIR object instance within SGCLIB memory space.
-             * @return A pointer to the DIR object.
-             */
-            DIR *GetHiddenDirObject()
-            {
-                return reinterpret_cast<DIR *>(kSgclibBaseAddress + kSgclibDirOffset);
-            }
-
-            /** @brief Loads the SGCLIB binary stub into High Work RAM. */
-            static inline void fs_load_stub(const void *stubPtr, size_t stubSize)
-            {
-                memcpy(sgclib_api(), stubPtr, stubSize);
-            }
 
             /** @brief Initializes the SGCLIB FAT driver. Returns SGC_FR_OK on success. */
             static inline int fs_init()
             {
-                return SGCLIB_API->init();
+                return sgc_init();
             }
 
             /** @brief Gets current working directory. */
             static inline int fs_getcwd(char *buff, int buflen)
             {
-                return sgclib_api()->getcwd(buff, buflen);
+                return sgc_getcwd(buff, buflen);
             }
 
             /** @brief Changes current working directory. */
             static inline int fs_chdir(const char *path)
             {
-                return sgclib_api()->chdir(path);
+                return sgc_chdir(path);
             }
 
             /** @brief Opens a file. Returns file descriptor or -1 on error. */
             static inline int fs_open(const char *filename, int flags)
             {
-                return sgclib_api()->open(filename, flags);
+                return sgc_open(filename, flags);
             }
 
             /** @brief Closes a file descriptor. */
             static inline int fs_close(int fd)
             {
-                return sgclib_api()->close(fd);
+                return sgc_close(fd);
             }
 
             /** @brief Reads from an open file. Returns bytes read, 0 at EOF, <0 on error. */
             static inline int fs_read(int fd, void *buf, int len)
             {
-                return sgclib_api()->read(fd, buf, len);
+                return sgc_read(fd, buf, len);
             }
 
             /** @brief Writes to an open file. Returns bytes written, <0 on error. */
             static inline int fs_write(int fd, const void *buf, int len)
             {
-                return sgclib_api()->write(fd, buf, len);
+                return sgc_write(fd, buf, len);
             }
 
             /** @brief Gets file/directory metadata. Returns SGC_FR_OK on success. */
             static inline int fs_stat(const char *filename, sgc_stat_t *stat)
             {
-                return sgclib_api()->stat(filename, stat, static_cast<int>(sizeof(sgc_stat_t)));
+                return sgc_stat(filename, stat, static_cast<int>(sizeof(sgc_stat_t)));
             }
 
             /** @brief Opens a directory for listing. Returns SGC_FR_OK on success. */
             static inline int fs_opendir(const char *path)
             {
-                return sgclib_api()->opendir(path);
+                return sgc_opendir(path);
             }
 
             /** @brief Removes a file. Returns SGC_FR_OK on success. */
             static inline int fs_unlink(const char *path)
             {
-                return sgclib_api()->unlink(path);
+                return sgc_unlink(path);
             }
 
             /** @brief Reads a directory entry. Returns SGC_FR_OK on success. */
             static inline int fs_readdir(FILINFO *entry)
             {
-                HiddenFReaddir hiddenReaddir = GetHiddenFReaddir();
-                DIR *hiddenDir = GetHiddenDirObject();
-                if (hiddenReaddir == NULL || hiddenDir == NULL)
-                {
-                    return SGC_FR_DISK_ERR;
-                }
-
-                return hiddenReaddir(hiddenDir, entry);
+                return f_readdir(&dir, entry);
             }
 
             /**
