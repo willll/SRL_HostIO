@@ -74,3 +74,8 @@ Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.iso
 Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.map
 Samples/Debug - File transfer/cd/data/*.TXT
 Samples/Debug - File transfer/cd/data/0.bin
+Tests/cd/data/*.TXT
+
+Samples/Debug - File transfer/cd/data/BOOTSND.MAP
+Samples/Debug - File transfer/cd/data/SDDRVS.DAT
+Samples/Debug - File transfer/cd/data/SDDRVS.TSK
