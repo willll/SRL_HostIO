@@ -5,7 +5,7 @@
 #include <cstddef> // For size_t
 #include <cstdint> // For uintptr_t, size_t, uint8_t, uint32_t
 #include <initializer_list>
-#include <srl_register.hpp>
+#include <srl_devcart.hpp>
 
 /**
  * @brief Namespace for interacting with a USB development cartridge for the
@@ -99,7 +99,7 @@ namespace SRL
              */
             static inline bool WriteAll(const uint8_t *data, size_t size)
             {
-                return CS0::write(data, size) == size;
+                return CS0::Write(data, size) == size;
             }
 
 /** @brief Read all bytes into a buffer from the DevCart USB FIFO.
@@ -111,7 +111,7 @@ namespace SRL
             {
                 for (size_t i = 0; i < size; ++i)
                 {
-                    data[i] = CS0::read();
+                    data[i] = CS0::Read();
                 }
                 return true;
             }
@@ -159,7 +159,7 @@ namespace SRL
                     uint8_t sink = 0;
                     for (uint16_t i = 0; i < payloadLen; ++i)
                     {
-                        sink = CS0::read();
+                        sink = CS0::Read();
                     }
                     (void)sink;
                     return false;

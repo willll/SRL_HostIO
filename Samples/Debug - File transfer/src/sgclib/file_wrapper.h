@@ -3,7 +3,7 @@
  *  by cafe-alpha
  *
  *  See LICENSE file for details.
-**/
+ **/
 
 #ifndef _FILE_WRAPPER_
 #define _FILE_WRAPPER_

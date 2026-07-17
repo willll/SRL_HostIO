@@ -27,6 +27,10 @@ BUILD_DROP = ./BuildDrop
 # SRL installation directory
 SRL_INSTALL_ROOT ?= ../..
 
+# Include HostIO extra module
+MODULES_EXTRA = SRL_HostIO
+
+
 # Find all .c, .cxx and .s files
 SOURCES = $(patsubst ./%,%,$(shell find src/ -name '*.c')) 
 SOURCES += $(patsubst ./%,%,$(shell find src/ -name '*.cxx'))

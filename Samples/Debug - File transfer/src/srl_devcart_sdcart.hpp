@@ -7,7 +7,6 @@
 #include <cstdint> // For uintptr_t, size_t, uint8_t, uint32_t
 #include <string.h>
 #include <initializer_list>
-#include <srl_register.hpp>
 
 /**
  * @brief Namespace for interacting with a USB development cartridge for the
@@ -209,7 +208,7 @@ namespace SRL
              */
             static inline bool IsSdWriteProtectedOrMissing()
             {
-                return (CS1::ReadRegister(CS1::Register::REG_SD_WRITE_PROTECT) & 0x01U) != 0;
+                return (CS1::ReadRegister(CS1::Register::RegSdWriteProtect) & 0x01U) != 0;
             }
 
             /**
@@ -260,16 +259,16 @@ namespace SRL
             inline void send_sd_command(uint16_t cmd, uint32_t arg)
             {
                 // 1. Wait for SD card to be ready (poll Auxiliary Status Register)
-                while ((*(volatile uint16_t *)CS0::SDCardRegisters::CART_ASR) &
+                while ((*(volatile uint16_t *)CS0::SDCardRegisters::CartAsr) &
                        0x01)
                 { /* busy wait */
                 }
 
                 // 2. Write the 32-bit argument
-                *(volatile uint32_t *)CS0::SDCardRegisters::CART_CMD_ARG = arg;
+                *(volatile uint32_t *)CS0::SDCardRegisters::CartCmdArg = arg;
 
                 // 3. Send the command index
-                *(volatile uint16_t *)CS0::SDCardRegisters::CART_CMD = cmd;
+                *(volatile uint16_t *)CS0::SDCardRegisters::CartCmd = cmd;
             }
 
             /**
@@ -280,7 +279,7 @@ namespace SRL
             {
                 // Poll status register until ready bit is set
                 uint32_t timeout = 0xFFFFF;
-                while ((*(volatile uint32_t *)CS0::SDCardRegisters::CART_SR) &
+                while ((*(volatile uint32_t *)CS0::SDCardRegisters::CartSr) &
                        0x00000100 /* Example busy bit */)
                 {
                     if (--timeout == 0)

@@ -3,7 +3,7 @@
  *  by cafe-alpha
  *
  *  See LICENSE file for details.
-**/
+ **/
 
 #ifndef _BINWRAP_H_
 #define _BINWRAP_H_

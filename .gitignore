@@ -67,3 +67,10 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.bin
+Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.cue
+Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.elf
+Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.iso
+Samples/Debug - File transfer/BuildDrop/Debug_FileTransfer.map
+Samples/Debug - File transfer/cd/data/*.TXT
+Samples/Debug - File transfer/cd/data/0.bin

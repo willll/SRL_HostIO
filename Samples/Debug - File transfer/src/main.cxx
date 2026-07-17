@@ -1,5 +1,6 @@
 #include <srl.hpp>
 #include <srl_devcart.hpp>
+#include <hostio.hpp>
 #include "srl_devcart_sdcart.hpp"
 
 #include <cstddef>
@@ -832,7 +833,7 @@ int main()
 
     while (true)
     {
-        if (!SRL::DevCart::CS0::isRXFEmpty())
+        if (!SRL::DevCart::CS0::IsRxfEmpty())
         {
             HandleHostIoRequest();
         }
