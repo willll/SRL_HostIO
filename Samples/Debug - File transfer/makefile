@@ -30,11 +30,17 @@ SRL_INSTALL_ROOT ?= ../..
 # Include HostIO extra module
 MODULES_EXTRA = SRL_HostIO
 
-
 # Find all .c, .cxx and .s files
 SOURCES = $(patsubst ./%,%,$(shell find src/ -name '*.c')) 
 SOURCES += $(patsubst ./%,%,$(shell find src/ -name '*.cxx'))
 SOURCES += $(patsubst ./%,%,$(shell find src/ -name '*.s'))
+
+# Include fatfs and sgclib sources from modules_extra/SRL_HostIO/INC
+SOURCES += ../../INC/fatfs/ff.c \
+           ../../INC/fatfs/diskio.c \
+           ../../INC/fatfs/ffsystem.c \
+           ../../INC/fatfs/ffunicode.c \
+           ../../INC/sgclib/binwrap.s
 
 # Include shared makefile
 SDK_ROOT = $(SRL_INSTALL_ROOT)/saturnringlib

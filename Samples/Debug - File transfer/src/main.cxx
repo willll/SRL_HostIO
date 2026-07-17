@@ -1,6 +1,6 @@
 #include <srl.hpp>
 #include <srl_devcart.hpp>
-#include <hostio.hpp>
+#include <srl_devcart_hostio.hpp>
 #include "srl_devcart_sdcart.hpp"
 
 #include <cstddef>
@@ -826,8 +826,7 @@ namespace
 
 int main()
 {
-    SRL::Core::Initialize(HighColor::Colors::Black);
-    SRL::Cd::Initialize();
+    SRL::Core::Initialize(HighColor::Colors::Black);make
 
     SRL::Debug::Print(1, 0, "File Transfer - FTX");
 

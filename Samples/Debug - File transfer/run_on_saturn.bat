@@ -1,3 +1,3 @@
-:; "../../tools/scripts/run.sh" USBGamers; exit;
+:; "../../../../tools/scripts/run.sh" USBGamers; exit;
 @ECHO Off
-"../../tools/scripts/run.bat" USBGamers
+"../../../../tools/scripts/run.bat" USBGamers

@@ -100,9 +100,9 @@ namespace MockCS0
     }
 } // namespace MockCS0
 
-// Redirect CS0 references in hostio.hpp to MockCS0
+// Redirect CS0 references in srl_devcart_hostio.hpp to MockCS0
 #define CS0 MockCS0
-#include <hostio.hpp>
+#include <srl_devcart_hostio.hpp>
 #undef CS0
 
 #include "minunit.h"

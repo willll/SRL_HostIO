@@ -108,7 +108,7 @@ Calculate and verify the CRC-8 checksum of a file on the target device (supports
 ```
 SRL_HostIO/
 ├── INC/
-│   └── hostio.hpp           # Core HostIo protocol decoder and frame sender
+│   └── srl_devcart_hostio.hpp # Core HostIo protocol decoder and frame sender
 ├── Samples/
 │   └── Debug - File transfer/
 │       ├── makefile         # Compilation setup for Saturn Ring Library SDK
@@ -152,7 +152,7 @@ git submodule update --init --recursive modules_extra/SRL_HostIO
 Then include the HostIO header in your code:
 
 ```cpp
-#include <hostio.hpp>
+#include <srl_devcart_hostio.hpp>
 ```
 
 If you want to use the sample application instead of just the header, see `Samples/Debug - File transfer/makefile` for a real SRL project example.
@@ -161,7 +161,7 @@ If you want to use the sample application instead of just the header, see `Sampl
 
 ## Core API Reference
 
-### `INC/hostio.hpp`
+### `INC/srl_devcart_hostio.hpp`
 Located in the `SRL::DevCart::HostIo` namespace:
 - **`TryReadRequest`**: Reads and decodes a request frame from the USB FIFO. Extracts the command and buffers the payload.
 - **`SendResponse`**: Packages status and payload data into a standardized response frame and writes it back to the host via DevCart.

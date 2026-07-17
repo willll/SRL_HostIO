@@ -4,7 +4,7 @@
 
 #include "../fatfs/diskio.h"		/* Declarations of disk functions */
 
-#include "../sgclib/sdcard.h"
+#include "sgclib/sdcard.h"
 //#include "../log.h"
 
 #define WINDOWS_PLATFORM 0

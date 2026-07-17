@@ -15,7 +15,7 @@
 _sgclib_stub_dat:
 __sgclib_stub_dat:
 ___sgclib_stub_dat:
-    .incbin "src/sgclib/sgclib.bin"
+    .incbin "sgclib/sgclib.bin"
 
     .align 4
 _sgclib_stub_end:
