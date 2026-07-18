@@ -3,6 +3,7 @@
 #include <srl.hpp>
 #include <srl_log.hpp>
 #include <srl_devcart.hpp>
+#include <srl_devcart_sdcard.hpp>
 
 /**
  * @brief Mock implementation of CS0 to simulate USB FIFO operations without hardware.
@@ -105,11 +106,7 @@ namespace MockCS0
 #include <srl_devcart_hostio.hpp>
 #undef CS0
 
-#include "fatfs/ff.h"
 #include "sgclib/sgclib.h"
-
-// Define the global dir required by sgclib/fatfs
-DIR dir;
 
 namespace MockFatFs
 {
@@ -132,6 +129,7 @@ namespace MockFatFs
     static bool fReadCalled = false;
     static bool fWriteCalled = false;
     static bool fCloseCalled = false;
+    static bool fClosedirCalled = false;
 
     inline void Reset()
     {
@@ -154,6 +152,7 @@ namespace MockFatFs
         fReadCalled = false;
         fWriteCalled = false;
         fCloseCalled = false;
+        fClosedirCalled = false;
     }
 } // namespace MockFatFs
 
@@ -286,6 +285,12 @@ FRESULT f_opendir(DIR* dp, const TCHAR* path)
     strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
     MockFatFs::fOpendirCalled = true;
     return MockFatFs::nextFResult;
+}
+FRESULT f_closedir(DIR* dp)
+{
+    (void)dp;
+    MockFatFs::fClosedirCalled = true;
+    return FR_OK;
 }
 static int g_readdir_count = 0;
 FRESULT f_readdir(DIR* dp, FILINFO* fno)
@@ -424,10 +429,12 @@ void hostio_test_output_header(void)
 
 MU_TEST(test_decode_u16_be)
 {
-    using namespace SRL::DevCart::HostIo;
-    mu_assert_int_eq(0x1234, DecodeU16BE(0x12, 0x34));
-    mu_assert_int_eq(0x0000, DecodeU16BE(0x00, 0x00));
-    mu_assert_int_eq(0xFFFF, DecodeU16BE(0xFF, 0xFF));
+    uint8_t buf1[2] = {0x34, 0x12};
+    mu_assert_int_eq(0x1234, SRL::Endian::DeserializeUint16(buf1));
+    uint8_t buf2[2] = {0x00, 0x00};
+    mu_assert_int_eq(0x0000, SRL::Endian::DeserializeUint16(buf2));
+    uint8_t buf3[2] = {0xFF, 0xFF};
+    mu_assert_int_eq(0xFFFF, SRL::Endian::DeserializeUint16(buf3));
 }
 
 MU_TEST(test_write_all)
@@ -524,7 +531,7 @@ MU_TEST(test_send_response_no_payload)
     MockCS0::SetWriteBuffer(outBuf, sizeof(outBuf));
 
     mu_assert(SendResponse(Status::Ok, nullptr, 0), "SendResponse failed");
-    mu_assert_int_eq(HEADER_SIZE, MockCS0::writtenDataSize);
+    mu_assert_int_eq(HeaderSize, MockCS0::writtenDataSize);
     mu_assert_int_eq('S', outBuf[0]);
     mu_assert_int_eq('R', outBuf[1]);
     mu_assert_int_eq('L', outBuf[2]);
@@ -542,7 +549,7 @@ MU_TEST(test_send_response_with_payload)
 
     const uint8_t payload[] = {'o', 'k'};
     mu_assert(SendResponse(Status::Handled, payload, sizeof(payload)), "SendResponse failed");
-    mu_assert_int_eq(HEADER_SIZE + sizeof(payload), MockCS0::writtenDataSize);
+    mu_assert_int_eq(HeaderSize + sizeof(payload), MockCS0::writtenDataSize);
     mu_assert_int_eq('S', outBuf[0]);
     mu_assert_int_eq('R', outBuf[1]);
     mu_assert_int_eq('L', outBuf[2]);
@@ -626,7 +633,7 @@ MU_TEST(test_send_response_max_size)
     using namespace SRL::DevCart::HostIo;
     // writtenData is nullptr, MockCS0::Write will count bytes but not store them
     mu_assert(SendResponse(Status::Ok, nullptr, 0xFFFF), "SendResponse with 0xFFFF size should succeed");
-    mu_assert_int_eq(HEADER_SIZE + 0xFFFF, MockCS0::writtenDataSize);
+    mu_assert_int_eq(HeaderSize + 0xFFFF, MockCS0::writtenDataSize);
 }
 
 MU_TEST(test_try_read_request_exact_capacity)
@@ -702,7 +709,7 @@ MU_TEST(test_send_response_all_statuses)
         MockCS0::SetWriteBuffer(outBuf, sizeof(outBuf));
 
         mu_assert(SendResponse(statuses[i], nullptr, 0), "SendResponse failed for status");
-        mu_assert_int_eq(HEADER_SIZE, MockCS0::writtenDataSize);
+        mu_assert_int_eq(HeaderSize, MockCS0::writtenDataSize);
         mu_assert_int_eq(static_cast<uint8_t>(statuses[i]), outBuf[4]);
     }
 }

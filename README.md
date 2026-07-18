@@ -108,19 +108,44 @@ Calculate and verify the CRC-8 checksum of a file on the target device (supports
 ```
 SRL_HostIO/
 ├── INC/
-│   ├── srl_devcart_hostio.hpp # Core HostIo protocol decoder and frame sender
-│   ├── srl_devcart_sdcard.hpp # SD raw sector routines & SGCLIB wrapper
-│   ├── fatfs/       # FatFs FAT file system module headers
-│   └── sgclib/      # SGCLIB low-level SD driver interface headers
+│   ├── srl_devcart_hostio.hpp        # Core HostIo protocol decoder and frame sender
+│   ├── srl_devcart_sdcard.hpp        # SD Card C++ FileSystem, File, and Directory wrappers
+│   ├── srl_devcart_sdcard_lowlevel.hpp # Low-level registers, status functions, & sector routines
+│   ├── srl_devcart_sdcard_backend.hpp  # Generic path parsing utilities & raw sector operations
+│   ├── srl_devcart_sdcard_handlers.hpp # HostIO protocol command request handler implementations
+│   ├── srl_devcart_sdcard_crc.hpp      # Generic CRC-8 checksum calculation routine
+│   ├── fatfs/                        # FatFs FAT file system module headers
+│   └── sgclib/                       # SGCLIB low-level SD driver interface headers
 ├── Samples/
-│   └── Debug - File transfer/
-│       ├── makefile         # Compilation setup for Saturn Ring Library SDK
-│       ├── run_on_saturn.bat# Convenience runner script for Windows/Linux emulator/cartridge
-│       └── src/
-│           └── main.cxx     # Sample application main loop and request dispatcher
-├── LICENSE                  # MIT License
-└── module.mk                # Optional local build integration configuration
+│   ├── Debug - File transfer/         # Host-interactive file upload/download and diagnostics
+│   ├── SDCard - Access/               # Loading and displaying a 24-bit uncompressed TGA texture
+│   ├── SDCard - Directory Browser/    # Listing directories & file metadata in the FatFs partition
+│   └── SDCard - Save State Logger/    # Persisting game progress and verifying file states
+├── LICENSE                           # MIT License
+└── module.mk                         # Optional local build integration configuration
 ```
+
+---
+
+## Samples Overview
+
+`SRL_HostIO` includes several sample applications that showcase how to use the SD Card APIs:
+
+### 1. Debug - File transfer
+* **Description**: Sets up the framed binary protocol over USB FIFO. Demonstrates integration with host utilities like `ftx` to manage folders, upload/download files, compute checksums, or run raw sector diagnostics.
+* **Usage**: Main application loop dispatching host commands.
+
+### 2. SDCard - Access
+* **Description**: Shows how to load assets directly from the SD card's FAT partition. Specifically, it loads an uncompressed 24-bit TGA image `/TEST.TGA`, decodes it into VDP1 texture memory, and displays it with a dynamic distorted sprite animation.
+* **Usage**: Demonstrates `File` opening, chunked reading, and color space conversion to Saturn HighColor (RGB555) format.
+
+### 3. SDCard - Directory Browser
+* **Description**: Shows how to navigate and scan directories. Lists root directory contents and displays entries on screen, showing directory types, files, sizes, and last modification dates.
+* **Usage**: Demonstrates the C++ wrappers `Directory`, `DirectoryEntry`, and `FileSystem::GetCurrentDirectory()`.
+
+### 4. SDCard - Save State Logger
+* **Description**: Demonstrates persistent save game logging. Reads an existing save state (with high scores, play coordinates), updates the information, writes it back to a file, and prints the updated metadata using `FileSystem::Stat()`.
+* **Usage**: Demonstrates `File` write mode, data serialization/deserialization, and `FileSystem::Stat()`.
 
 ---
 
@@ -168,11 +193,20 @@ Located in the `SRL::DevCart::HostIo` namespace:
 - **`WriteAll` / `ReadAll`**: Helper methods for writing and reading raw byte streams to and from the CPLD registers.
 
 ### `INC/srl_devcart_sdcard.hpp`
-Located in the `SRL::DevCart::SD` namespace:
-- **`fs_load_stub`**: Copies the compiled SGCLIB driver assembly stub into Saturn High Work RAM.
-- **`fs_init`**: Initializes the low-level SD interface.
-- **`Backend::TryParseRawRange`**: Parses raw sector paths (e.g. `sdraw:0x2000:10`).
-- **`Backend::EraseRawRange`**: Fills a specified number of raw blocks starting at a specific sector with zeroes.
+Provides C++ wrapper classes in the `SRL::DevCart::SD` namespace:
+- **`FileSystem`**: Class managing the FAT partition volume (mounting, STAT metadata query, folder creation/deletion, renaming, and removal). Exposes a global singleton `g_fatfsBackend`.
+- **`File`**: Represents a file descriptor, supporting `Open`, `Read`, `Write`, `Seek`, and `Close` using safe memory bounds.
+- **`Directory`**: Handles scanning directory listings.
+- **`DirectoryEntry`**: Struct storing metadata (dates, times, sizes, attributes) for a directory node.
+
+### `INC/srl_devcart_sdcard_backend.hpp`
+Located in the `SRL::DevCart::SD::Backend` namespace:
+- **`TryParseRawRange`**: Parses raw sector ranges formatted as `sdraw:<sector>:<count>`.
+- **`EraseRawRange`**: Zeroes out raw block sector ranges on the SD card.
+
+### `INC/srl_devcart_sdcard_crc.hpp`
+Provides the CRC checksum engine:
+- **`Crc8Update`**: Accumulates and updates a CRC-8 checksum calculation over a block of bytes.
 
 ---
 
