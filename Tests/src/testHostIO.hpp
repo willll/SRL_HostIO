@@ -14,14 +14,14 @@
 namespace MockCS0
 {
     /** @brief Pointer to the buffer that simulates incoming host data. */
-    static const uint8_t *readBuffer = nullptr;
+    static const uint8_t* readBuffer = nullptr;
     /** @brief Size of the read buffer in bytes. */
     static size_t readBufferSize = 0;
     /** @brief Current offset index when reading from the buffer. */
     static size_t readBufferOffset = 0;
 
     /** @brief Pointer to the destination buffer that captures data sent by the Saturn. */
-    static uint8_t *writtenData = nullptr;
+    static uint8_t* writtenData = nullptr;
     /** @brief Number of bytes written by Saturn. */
     static size_t writtenDataSize = 0;
     /** @brief Capacity of the output destination buffer. */
@@ -45,7 +45,7 @@ namespace MockCS0
      * @param data Pointer to mock host request frame.
      * @param size Size of mock frame in bytes.
      */
-    inline void SetReadData(const uint8_t *data, size_t size)
+    inline void SetReadData(const uint8_t* data, size_t size)
     {
         readBuffer = data;
         readBufferSize = size;
@@ -57,7 +57,7 @@ namespace MockCS0
      * @param buffer Pointer to the destination buffer.
      * @param capacity Capacity of the buffer in bytes.
      */
-    inline void SetWriteBuffer(uint8_t *buffer, size_t capacity)
+    inline void SetWriteBuffer(uint8_t* buffer, size_t capacity)
     {
         writtenData = buffer;
         writtenDataCapacity = capacity;
@@ -77,7 +77,7 @@ namespace MockCS0
         return 0;
     }
 
-    inline size_t Write(const uint8_t *data, size_t size)
+    inline size_t Write(const uint8_t* data, size_t size)
     {
         size_t written = 0;
         for (size_t i = 0; i < size; ++i)
@@ -155,218 +155,226 @@ namespace MockFatFs
         fWriteCalled = false;
         fCloseCalled = false;
     }
-}
+} // namespace MockFatFs
 
 extern "C" {
-    int sgc_init(void)
+int sgc_init(void)
+{
+    MockFatFs::fsInitCalled = true;
+    return MockFatFs::fsInitResult;
+}
+int sgc_open(const char* filename, int flags)
+{
+    (void)flags;
+    strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fOpenCalled = true;
+    return 0;
+}
+int sgc_close(int fd)
+{
+    (void)fd;
+    MockFatFs::fCloseCalled = true;
+    return 0;
+}
+int sgc_read(int fd, void* buf, int len)
+{
+    (void)fd;
+    (void)buf;
+    (void)len;
+    MockFatFs::fReadCalled = true;
+    return 0;
+}
+int sgc_write(int fd, const void* buf, int len)
+{
+    (void)fd;
+    (void)buf;
+    (void)len;
+    MockFatFs::fWriteCalled = true;
+    return 0;
+}
+int sgc_stat(const char* filename, sgc_stat_t* stat, int statsize)
+{
+    (void)statsize;
+    strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fStatCalled = true;
+    if (stat)
     {
-        MockFatFs::fsInitCalled = true;
-        return MockFatFs::fsInitResult;
+        stat->attrib = AM_DIR;
+        strcpy(stat->name, "testdir");
     }
-    int sgc_open(const char *filename, int flags)
-    {
-        (void)flags;
-        strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fOpenCalled = true;
-        return 0;
-    }
-    int sgc_close(int fd)
-    {
-        (void)fd;
-        MockFatFs::fCloseCalled = true;
-        return 0;
-    }
-    int sgc_read(int fd, void *buf, int len)
-    {
-        (void)fd; (void)buf; (void)len;
-        MockFatFs::fReadCalled = true;
-        return 0;
-    }
-    int sgc_write(int fd, const void *buf, int len)
-    {
-        (void)fd; (void)buf; (void)len;
-        MockFatFs::fWriteCalled = true;
-        return 0;
-    }
-    int sgc_stat(const char *filename, sgc_stat_t *stat, int statsize)
-    {
-        (void)statsize;
-        strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fStatCalled = true;
-        if (stat)
-        {
-            stat->attrib = AM_DIR;
-            strcpy(stat->name, "testdir");
-        }
-        return MockFatFs::nextFResult;
-    }
-    int sgc_rename(const char *oldname, const char *newname)
-    {
-        strncpy(MockFatFs::lastPath, oldname, sizeof(MockFatFs::lastPath) - 1);
-        strncpy(MockFatFs::lastPath2, newname, sizeof(MockFatFs::lastPath2) - 1);
-        MockFatFs::fRenameCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    int sgc_mkdir(const char *filename)
-    {
-        strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fMkdirCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    int sgc_unlink(const char *filename)
-    {
-        strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fUnlinkCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    int sgc_opendir(const char *path)
-    {
-        strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fOpendirCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    int sgc_chdir(const char *path)
-    {
-        strncpy(MockFatFs::lastCwd, path, sizeof(MockFatFs::lastCwd) - 1);
-        MockFatFs::fChdirCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    int sgc_getcwd(char *buff, int buflen)
-    {
-        MockFatFs::fGetcwdCalled = true;
-        strncpy(buff, "/mock/cwd", buflen - 1);
-        return 0;
-    }
-
-    FRESULT f_mount(FATFS* fs, const TCHAR* path, BYTE opt)
-    {
-        (void)fs; (void)path; (void)opt;
-        MockFatFs::fMountCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    FRESULT f_unlink(const TCHAR* path)
-    {
-        strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fUnlinkCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    FRESULT f_mkdir(const TCHAR* path)
-    {
-        strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fMkdirCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    FRESULT f_rename(const TCHAR* old_name, const TCHAR* new_name)
-    {
-        strncpy(MockFatFs::lastPath, old_name, sizeof(MockFatFs::lastPath) - 1);
-        strncpy(MockFatFs::lastPath2, new_name, sizeof(MockFatFs::lastPath2) - 1);
-        MockFatFs::fRenameCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    FRESULT f_stat(const TCHAR* path, FILINFO* fno)
-    {
-        strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fStatCalled = true;
-        if (fno)
-        {
-            fno->fattrib = AM_DIR;
-            strcpy(fno->fname, "testdir");
-        }
-        return MockFatFs::nextFResult;
-    }
-    FRESULT f_opendir(DIR* dp, const TCHAR* path)
-    {
-        (void)dp;
-        strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fOpendirCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    static int g_readdir_count = 0;
-    FRESULT f_readdir(DIR* dp, FILINFO* fno)
-    {
-        (void)dp;
-        MockFatFs::fReaddirCalled = true;
-        if (fno && g_readdir_count == 0)
-        {
-            fno->fattrib = 0;
-            fno->fsize = 1234;
-            fno->fdate = (2026 - 1980) << 9 | 7 << 5 | 18;
-            fno->ftime = 12 << 11 | 30 << 5 | 0;
-            strcpy(fno->fname, "testfile.txt");
-            g_readdir_count++;
-            return FR_OK;
-        }
-        else if (fno && g_readdir_count == 1)
-        {
-            fno->fattrib = AM_DIR;
-            fno->fsize = 0;
-            fno->fdate = (2026 - 1980) << 9 | 7 << 5 | 18;
-            fno->ftime = 12 << 11 | 30 << 5 | 0;
-            strcpy(fno->fname, "subdir");
-            g_readdir_count++;
-            return FR_OK;
-        }
-        if (fno)
-        {
-            fno->fname[0] = '\0';
-        }
-        return FR_OK;
-    }
-    FRESULT f_getcwd(TCHAR* buff, UINT len)
-    {
-        MockFatFs::fGetcwdCalled = true;
-        strncpy(buff, "/mock/cwd", len - 1);
-        return FR_OK;
-    }
-    FRESULT f_chdir(const TCHAR* path)
-    {
-        strncpy(MockFatFs::lastCwd, path, sizeof(MockFatFs::lastCwd) - 1);
-        MockFatFs::fChdirCalled = true;
-        return MockFatFs::nextFResult;
-    }
-    static uint32_t g_file_offset = 0;
-    static uint32_t g_file_size = 10;
-    FRESULT f_open(FIL* fp, const TCHAR* path, BYTE mode)
-    {
-        (void)fp; (void)mode;
-        strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
-        MockFatFs::fOpenCalled = true;
-        g_file_offset = 0;
-        return MockFatFs::nextFResult;
-    }
-    FRESULT f_read(FIL* fp, void* buff, UINT btr, UINT* br)
-    {
-        (void)fp;
-        MockFatFs::fReadCalled = true;
-        if (br)
-        {
-            uint32_t remaining = g_file_size - g_file_offset;
-            uint32_t to_read = (btr < remaining) ? btr : remaining;
-            memset(buff, 0xAA, to_read);
-            g_file_offset += to_read;
-            *br = to_read;
-        }
-        return FR_OK;
-    }
-    FRESULT f_write(FIL* fp, const void* buff, UINT btw, UINT* bw)
-    {
-        (void)fp; (void)buff;
-        MockFatFs::fWriteCalled = true;
-        if (bw)
-        {
-            *bw = btw;
-        }
-        return FR_OK;
-    }
-    FRESULT f_close(FIL* fp)
-    {
-        (void)fp;
-        MockFatFs::fCloseCalled = true;
-        return FR_OK;
-    }
+    return MockFatFs::nextFResult;
+}
+int sgc_rename(const char* oldname, const char* newname)
+{
+    strncpy(MockFatFs::lastPath, oldname, sizeof(MockFatFs::lastPath) - 1);
+    strncpy(MockFatFs::lastPath2, newname, sizeof(MockFatFs::lastPath2) - 1);
+    MockFatFs::fRenameCalled = true;
+    return MockFatFs::nextFResult;
+}
+int sgc_mkdir(const char* filename)
+{
+    strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fMkdirCalled = true;
+    return MockFatFs::nextFResult;
+}
+int sgc_unlink(const char* filename)
+{
+    strncpy(MockFatFs::lastPath, filename, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fUnlinkCalled = true;
+    return MockFatFs::nextFResult;
+}
+int sgc_opendir(const char* path)
+{
+    strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fOpendirCalled = true;
+    return MockFatFs::nextFResult;
+}
+int sgc_chdir(const char* path)
+{
+    strncpy(MockFatFs::lastCwd, path, sizeof(MockFatFs::lastCwd) - 1);
+    MockFatFs::fChdirCalled = true;
+    return MockFatFs::nextFResult;
+}
+int sgc_getcwd(char* buff, int buflen)
+{
+    MockFatFs::fGetcwdCalled = true;
+    strncpy(buff, "/mock/cwd", buflen - 1);
+    return 0;
 }
 
-#include "srl_devcart_sdcart.hpp"
+FRESULT f_mount(FATFS* fs, const TCHAR* path, BYTE opt)
+{
+    (void)fs;
+    (void)path;
+    (void)opt;
+    MockFatFs::fMountCalled = true;
+    return MockFatFs::nextFResult;
+}
+FRESULT f_unlink(const TCHAR* path)
+{
+    strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fUnlinkCalled = true;
+    return MockFatFs::nextFResult;
+}
+FRESULT f_mkdir(const TCHAR* path)
+{
+    strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fMkdirCalled = true;
+    return MockFatFs::nextFResult;
+}
+FRESULT f_rename(const TCHAR* old_name, const TCHAR* new_name)
+{
+    strncpy(MockFatFs::lastPath, old_name, sizeof(MockFatFs::lastPath) - 1);
+    strncpy(MockFatFs::lastPath2, new_name, sizeof(MockFatFs::lastPath2) - 1);
+    MockFatFs::fRenameCalled = true;
+    return MockFatFs::nextFResult;
+}
+FRESULT f_stat(const TCHAR* path, FILINFO* fno)
+{
+    strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fStatCalled = true;
+    if (fno)
+    {
+        fno->fattrib = AM_DIR;
+        strcpy(fno->fname, "testdir");
+    }
+    return MockFatFs::nextFResult;
+}
+FRESULT f_opendir(DIR* dp, const TCHAR* path)
+{
+    (void)dp;
+    strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fOpendirCalled = true;
+    return MockFatFs::nextFResult;
+}
+static int g_readdir_count = 0;
+FRESULT f_readdir(DIR* dp, FILINFO* fno)
+{
+    (void)dp;
+    MockFatFs::fReaddirCalled = true;
+    if (fno && g_readdir_count == 0)
+    {
+        fno->fattrib = 0;
+        fno->fsize = 1234;
+        fno->fdate = (2026 - 1980) << 9 | 7 << 5 | 18;
+        fno->ftime = 12 << 11 | 30 << 5 | 0;
+        strcpy(fno->fname, "testfile.txt");
+        g_readdir_count++;
+        return FR_OK;
+    }
+    else if (fno && g_readdir_count == 1)
+    {
+        fno->fattrib = AM_DIR;
+        fno->fsize = 0;
+        fno->fdate = (2026 - 1980) << 9 | 7 << 5 | 18;
+        fno->ftime = 12 << 11 | 30 << 5 | 0;
+        strcpy(fno->fname, "subdir");
+        g_readdir_count++;
+        return FR_OK;
+    }
+    if (fno)
+    {
+        fno->fname[0] = '\0';
+    }
+    return FR_OK;
+}
+FRESULT f_getcwd(TCHAR* buff, UINT len)
+{
+    MockFatFs::fGetcwdCalled = true;
+    strncpy(buff, "/mock/cwd", len - 1);
+    return FR_OK;
+}
+FRESULT f_chdir(const TCHAR* path)
+{
+    strncpy(MockFatFs::lastCwd, path, sizeof(MockFatFs::lastCwd) - 1);
+    MockFatFs::fChdirCalled = true;
+    return MockFatFs::nextFResult;
+}
+static uint32_t g_file_offset = 0;
+static uint32_t g_file_size = 10;
+FRESULT f_open(FIL* fp, const TCHAR* path, BYTE mode)
+{
+    (void)fp;
+    (void)mode;
+    strncpy(MockFatFs::lastPath, path, sizeof(MockFatFs::lastPath) - 1);
+    MockFatFs::fOpenCalled = true;
+    g_file_offset = 0;
+    return MockFatFs::nextFResult;
+}
+FRESULT f_read(FIL* fp, void* buff, UINT btr, UINT* br)
+{
+    (void)fp;
+    MockFatFs::fReadCalled = true;
+    if (br)
+    {
+        uint32_t remaining = g_file_size - g_file_offset;
+        uint32_t to_read = (btr < remaining) ? btr : remaining;
+        memset(buff, 0xAA, to_read);
+        g_file_offset += to_read;
+        *br = to_read;
+    }
+    return FR_OK;
+}
+FRESULT f_write(FIL* fp, const void* buff, UINT btw, UINT* bw)
+{
+    (void)fp;
+    (void)buff;
+    MockFatFs::fWriteCalled = true;
+    if (bw)
+    {
+        *bw = btw;
+    }
+    return FR_OK;
+}
+FRESULT f_close(FIL* fp)
+{
+    (void)fp;
+    MockFatFs::fCloseCalled = true;
+    return FR_OK;
+}
+}
+
+#include "srl_devcart_sdcard.hpp"
 #include "minunit.h"
 
 using namespace SRL;
@@ -660,10 +668,9 @@ MU_TEST(test_try_read_request_all_commands)
         Command::Mkdir,
         Command::Rmdir,
         Command::Rename,
-        Command::Download
-    };
+        Command::Download};
 
-    for (size_t i = 0; i < sizeof(commands)/sizeof(commands[0]); ++i)
+    for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); ++i)
     {
         MockCS0::Reset();
         const uint8_t req[] = {'S', 'R', 'L', '1', static_cast<uint8_t>(commands[i]), 0, 0};
@@ -686,10 +693,9 @@ MU_TEST(test_send_response_all_statuses)
         Status::Error,
         Status::Unsupported,
         Status::BadRequest,
-        Status::Handled
-    };
+        Status::Handled};
 
-    for (size_t i = 0; i < sizeof(statuses)/sizeof(statuses[0]); ++i)
+    for (size_t i = 0; i < sizeof(statuses) / sizeof(statuses[0]); ++i)
     {
         MockCS0::Reset();
         uint8_t outBuf[10] = {0};
@@ -707,8 +713,7 @@ MU_TEST(test_try_read_request_sequential)
     // Sequential requests: List (no payload) then Remove (4 bytes payload)
     const uint8_t req[] = {
         'S', 'R', 'L', '1', static_cast<uint8_t>(Command::List), 0, 0,
-        'S', 'R', 'L', '1', static_cast<uint8_t>(Command::Remove), 0, 4, 'a', 'b', 'c', 'd'
-    };
+        'S', 'R', 'L', '1', static_cast<uint8_t>(Command::Remove), 0, 4, 'a', 'b', 'c', 'd'};
     MockCS0::SetReadData(req, sizeof(req));
 
     Command cmd;
@@ -742,18 +747,18 @@ MU_TEST(test_split_path_and_name)
 {
     using namespace SRL::DevCart::SD;
     char path1[100];
-    
+
     strcpy(path1, "/dir1/dir2/file.txt");
-    char *name1 = SplitPathAndName(path1);
+    char* name1 = SplitPathAndName(path1);
     mu_assert_string_eq("file.txt", name1);
     mu_assert_string_eq("/dir1/dir2", path1);
 
     strcpy(path1, "file.txt");
-    char *name2 = SplitPathAndName(path1);
+    char* name2 = SplitPathAndName(path1);
     mu_assert_string_eq("file.txt", name2);
 
     strcpy(path1, "/file.txt");
-    char *name3 = SplitPathAndName(path1);
+    char* name3 = SplitPathAndName(path1);
     mu_assert_string_eq("file.txt", name3);
     mu_assert_string_eq("", path1);
 }
@@ -839,7 +844,7 @@ MU_TEST(test_handle_rename_sd_fs)
     size_t responseLen = 0;
 
     char payload[100];
-    char *p = payload;
+    char* p = payload;
     strcpy(p, "/old.txt");
     p += strlen("/old.txt") + 1;
     strcpy(p, "/new.txt");
@@ -891,4 +896,3 @@ MU_TEST_SUITE(hostio_test_suite)
     MU_RUN_TEST(test_handle_rename_sd_fs);
 }
 }
-

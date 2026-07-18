@@ -1,6 +1,8 @@
 #pragma once
 #include <srl.hpp>
 #include <srl_devcart.hpp>
+#include "srl_devcart_hostio.hpp"
+
 
 #include "sgclib/sgclib.h"
 #include "fatfs/ff.h"
@@ -9,8 +11,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <initializer_list>
-
-
 
 /**
  * @brief Namespace for interacting with a USB development cartridge for the
@@ -25,10 +25,6 @@ namespace SRL
     {
         namespace SD
         {
-
-
-
-
             /** @brief Initializes the SGCLIB FAT driver. Returns SGC_FR_OK on success. */
             static inline int fs_init()
             {
@@ -481,24 +477,24 @@ namespace SRL
             inline bool g_sgcReady = false;
             inline FATFS g_fatfs;
 
-            #ifndef APPEND_FMT
-            #define APPEND_FMT(_BUF_, _CAP_, _USED_, _FMT_, ...)                                           \
-                do                                                                                         \
-                {                                                                                          \
-                    if ((_USED_) < (_CAP_))                                                                \
-                    {                                                                                      \
-                        const int _written = snprintf((_BUF_) + (_USED_),                                  \
-                            (_CAP_) - (_USED_),                                                            \
-                            (_FMT_), ##__VA_ARGS__);                                                       \
-                        if (_written > 0)                                                                  \
-                        {                                                                                  \
-                            const size_t _advance = static_cast<size_t>(_written);                         \
-                            (_USED_) = ((_USED_) + _advance >= (_CAP_)) ? (_CAP_) : ((_USED_) + _advance); \
-                        }                                                                                  \
-                    }                                                                                      \
-                }                                                                                          \
-                while (0)
-            #endif
+#ifndef APPEND_FMT
+    #define APPEND_FMT(_BUF_, _CAP_, _USED_, _FMT_, ...)                                           \
+        do                                                                                         \
+        {                                                                                          \
+            if ((_USED_) < (_CAP_))                                                                \
+            {                                                                                      \
+                const int _written = snprintf((_BUF_) + (_USED_),                                  \
+                    (_CAP_) - (_USED_),                                                            \
+                    (_FMT_), ##__VA_ARGS__);                                                       \
+                if (_written > 0)                                                                  \
+                {                                                                                  \
+                    const size_t _advance = static_cast<size_t>(_written);                         \
+                    (_USED_) = ((_USED_) + _advance >= (_CAP_)) ? (_CAP_) : ((_USED_) + _advance); \
+                }                                                                                  \
+            }                                                                                      \
+        }                                                                                          \
+        while (0)
+#endif
 
             /**
              * @brief Calculates or updates a CRC-8 checksum over a buffer of data.
@@ -1194,8 +1190,7 @@ namespace SRL
                         static_cast<uint8_t>((file_size >> 24) & 0xFFU),
                         static_cast<uint8_t>((file_size >> 16) & 0xFFU),
                         static_cast<uint8_t>((file_size >> 8) & 0xFFU),
-                        static_cast<uint8_t>(file_size & 0xFFU)
-                    };
+                        static_cast<uint8_t>(file_size & 0xFFU)};
                     SRL::DevCart::HostIo::SendResponse(SRL::DevCart::HostIo::Status::Ok, size_buf, 4);
 
                     // 2. Send File Data & Calculate CRC
