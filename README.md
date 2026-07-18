@@ -108,16 +108,16 @@ Calculate and verify the CRC-8 checksum of a file on the target device (supports
 ```
 SRL_HostIO/
 ├── INC/
-│   └── srl_devcart_hostio.hpp # Core HostIo protocol decoder and frame sender
+│   ├── srl_devcart_hostio.hpp # Core HostIo protocol decoder and frame sender
+│   ├── srl_devcart_sdcard.hpp # SD raw sector routines & SGCLIB wrapper
+│   ├── fatfs/       # FatFs FAT file system module headers
+│   └── sgclib/      # SGCLIB low-level SD driver interface headers
 ├── Samples/
 │   └── Debug - File transfer/
 │       ├── makefile         # Compilation setup for Saturn Ring Library SDK
 │       ├── run_on_saturn.bat# Convenience runner script for Windows/Linux emulator/cartridge
 │       └── src/
-│           ├── main.cxx     # Sample application main loop and request dispatcher
-│           ├── srl_devcart_sdcart.hpp # SD raw sector routines & SGCLIB wrapper
-│           ├── fatfs/       # FatFs FAT file system module headers
-│           └── sgclib/      # SGCLIB low-level SD driver interface headers
+│           └── main.cxx     # Sample application main loop and request dispatcher
 ├── LICENSE                  # MIT License
 └── module.mk                # Optional local build integration configuration
 ```
@@ -167,7 +167,7 @@ Located in the `SRL::DevCart::HostIo` namespace:
 - **`SendResponse`**: Packages status and payload data into a standardized response frame and writes it back to the host via DevCart.
 - **`WriteAll` / `ReadAll`**: Helper methods for writing and reading raw byte streams to and from the CPLD registers.
 
-### `Samples/Debug - File transfer/src/srl_devcart_sdcart.hpp`
+### `INC/srl_devcart_sdcard.hpp`
 Located in the `SRL::DevCart::SD` namespace:
 - **`fs_load_stub`**: Copies the compiled SGCLIB driver assembly stub into Saturn High Work RAM.
 - **`fs_init`**: Initializes the low-level SD interface.
