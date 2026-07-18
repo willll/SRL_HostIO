@@ -104,36 +104,6 @@ namespace SRL
             }
 
             /**
-             * @brief Placeholder function for opening an SD file for reading.
-             *
-             * Currently simplified for testing purposes.
-             *
-             * @param path The path of the file to open.
-             * @param fd Reference to store the file descriptor.
-             * @return True if successful; false otherwise.
-             */
-            static inline bool OpenSdFileRead(const char *path, int &fd)
-            {
-                fd = -1;
-                char cwd[kMaxPathBytes + 1] = {'\0'};
-                char pathCopy[kMaxPathBytes + 1] = {'\0'};
-                strncpy(pathCopy, path, kMaxPathBytes);
-                pathCopy[kMaxPathBytes] = '\0';
-
-                SaveCurrentDir(cwd, sizeof(cwd));
-                char *name = SplitPathAndName(pathCopy);
-
-                if (pathCopy[0] != '\0')
-                {
-                    f_chdir(pathCopy);
-                }
-
-                // Note: Assuming fd logic requires custom mapping or simplified handle access
-                fd = 0; // Simplified for placeholder
-                return true;
-            }
-
-            /**
              * @brief Handles a request from the host to list directory contents.
              *
              * Supports SD card FAT filesystem paths and SD raw sector ranges.
