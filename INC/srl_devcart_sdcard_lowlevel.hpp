@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <srl_devcart.hpp>
+#include "sgclib/sdcard.h"
 
 namespace SRL
 {
@@ -8,6 +9,26 @@ namespace SRL
     {
         namespace SD
         {
+            /** 
+             * @brief SD card block size in bytes.
+             * Note: Enforced at 512 bytes by the physical SD card hardware protocol 
+             * and FAT filesystem specifications. Do not modify to optimize memory, 
+             * as the hardware controller will reject non-512 byte block lengths.
+             */
+            constexpr uint32_t BLOCK_SIZE = 512;
+
+            /**
+             * @brief A simple File handle structure for raw SD sector operations.
+             */
+            struct FileHandle
+            {
+                uint32_t start_sector;   /**< The starting sector on the SD card */
+                uint32_t current_sector; /**< The current sector being accessed */
+                uint32_t bytes_written;  /**< Number of bytes written to the file so far */
+                uint32_t file_size;      /**< Total size of the file in bytes */
+                bool is_open;            /**< Flag indicating if the file handle is open */
+            };
+
             /**
              * @brief Bit shifts for SD card LED and switch controls in registers (e.g.,
              * LED_SETTING).
@@ -33,9 +54,7 @@ namespace SRL
 
             /**
              * @brief Returns SD write-protect/no-card status on USB Gamer's cartridge.
-             *
-             * 0: write enabled
-             * 1: write protected or no SD card
+             * @return True if SD is write-protected or missing, false if write-enabled.
              */
             static inline bool IsSdWriteProtectedOrMissing()
             {
@@ -44,9 +63,7 @@ namespace SRL
 
             /**
              * @brief Returns whether USB data path is expected to be enabled.
-             *
-             * On USB Gamer's cartridge, USB may be disabled when SD is write-protected
-             * or missing. On other variants this returns true.
+             * @return True if USB data path is enabled, false otherwise.
              */
             static inline bool IsUsbDataPathEnabled()
             {
@@ -57,76 +74,69 @@ namespace SRL
                 return !IsSdWriteProtectedOrMissing();
             }
 
-            // Common SD Card Commands
-            /** @brief SD card block size in bytes. */
-            constexpr uint32_t BLOCK_SIZE = 512;
-            /** @brief Command to reset the SD card to idle state (CMD0). */
-            constexpr uint16_t CMD_GO_IDLE_STATE = 0;
-            /** @brief Command to write a single 512-byte block (CMD24). */
-            constexpr uint16_t CMD_WRITE_SINGLE_BLOCK = 24;
-            /** @brief Command to write multiple blocks (CMD25). */
-            constexpr uint16_t CMD_WRITE_MULTIPLE_BLOCK = 25;
-            /** @brief Command to terminate a multiple-block write transmission (CMD12). */
-            constexpr uint16_t CMD_STOP_TRANSMISSION = 12;
-
             /**
-             * @brief A simple File handle structure for raw SD sector operations.
+             * @brief Checks if an SD card is physically inserted in the reader.
+             * @return True if an SD card is inserted, false otherwise.
              */
-            struct FileHandle
+            inline static bool IsSdCardInserted()
             {
-                uint32_t start_sector;   /**< The starting sector on the SD card */
-                uint32_t current_sector; /**< The current sector being accessed */
-                uint32_t bytes_written;  /**< Number of bytes written to the file so far */
-                uint32_t file_size;      /**< Total size of the file in bytes */
-                bool is_open;            /**< Flag indicating if the file handle is open */
-            };
-
-            /**
-             * @brief Send a low-level command to the SD Card via the DevCart
-             * CPLD/Registers.
-             * @param cmd The SD card command index.
-             * @param arg The 32-bit command argument.
-             */
-            inline void send_sd_command(uint16_t cmd, uint32_t arg)
-            {
-                // 1. Wait for SD card to be ready (poll Auxiliary Status Register)
-                while ((*(volatile uint16_t *)CS0::SDCardRegisters::CartAsr) &
-                       0x01)
-                { /* busy wait */
-                }
-
-                // 2. Write the 32-bit argument
-                *(volatile uint32_t *)CS0::SDCardRegisters::CartCmdArg = arg;
-
-                // 3. Send the command index
-                *(volatile uint16_t *)CS0::SDCardRegisters::CartCmd = cmd;
+                return (CS1::ReadRegister(CS1::Register::CpldIo) & (1U << static_cast<uint8_t>(SD_LSHFT::SD_EJECT_LSHFT))) == 0;
             }
 
             /**
-             * @brief Wait for the SD Card to complete its current operation.
-             * @return True if the SD card became ready; false if timed out.
+             * @brief Checks if the SD card was reinserted since the last check/reset.
+             * @return True if the SD card was reinserted, false otherwise.
              */
-            inline bool wait_sd_ready()
+            inline static bool IsSdCardReinserted()
             {
-                // Poll status register until ready bit is set
-                uint32_t timeout = 0xFFFFF;
-                while ((*(volatile uint32_t *)CS0::SDCardRegisters::CartSr) &
-                       0x00000100 /* Example busy bit */)
-                {
-                    if (--timeout == 0)
-                        return false;
-                }
-                return true;
+                return (CS1::ReadRegister(CS1::Register::RegSdReinsert) & 0x01U) != 0;
             }
+
+            /**
+             * @brief Clears/resets the SD card reinsertion flag.
+             */
+            inline static void ClearSdCardReinsertFlag()
+            {
+                *(volatile uint8_t *)(static_cast<uint32_t>(CS1::Register::RegSdReinsert)) = 0x01U;
+            }
+
+            /**
+             * @brief Sets the state of the SD card reader green LED.
+             * @param[in] on True to turn on the green LED, false to turn it off.
+             */
+            inline static void SetLedGreen(bool on)
+            {
+                sdc_ledset(SDC_LED_GREEN, on ? SDC_LED_ON : SDC_LED_OFF);
+            }
+
+            /**
+             * @brief Sets the state of the SD card reader red LED.
+             * @param[in] on True to turn on the red LED, false to turn it off.
+             */
+            inline static void SetLedRed(bool on)
+            {
+                sdc_ledset(SDC_LED_RED, on ? SDC_LED_ON : SDC_LED_OFF);
+            }
+
+            /**
+             * @brief Turns off both the green and red LEDs on the SD card reader.
+             */
+            inline static void TurnOffLeds()
+            {
+                SetLedGreen(false);
+                SetLedRed(false);
+            }
+
+
+
 
             /**
              * @brief Opens a "file" on the SD Card.
              * Since we aren't using a FAT filesystem, we write to raw sectors.
-             * @param handle The file handle to initialize
-             * @param raw_sector_start The absolute sector on the SD card to start writing
-             * to
-             * @param size Total file size
-             * @return true if successful
+             * @param[in,out] handle Reference to the FileHandle to initialize.
+             * @param[in] raw_sector_start The absolute sector on the SD card to start writing to.
+             * @param[in] size Total file size in bytes.
+             * @return True if the open operation succeeded, false otherwise.
              */
             inline bool open(FileHandle &handle, uint32_t raw_sector_start, uint32_t size)
             {
@@ -140,50 +150,55 @@ namespace SRL
                 handle.file_size = size;
                 handle.bytes_written = 0;
                 handle.is_open = true;
-                // Optionally send an init command or CMD25 (Write Multiple Block) here
                 return true;
             }
 
             /**
              * @brief Writes a buffer of data to the SD Card.
-             * Buffers the data until a full 512-byte sector is ready, then commits to SD.
+             * Writes blocks of 512 bytes to raw sectors of the SD Card.
+             * @param[in,out] handle Reference to the FileHandle to update.
+             * @param[in] buffer Pointer to the source data buffer to write.
+             * @param[in] length Number of bytes to write (must be a multiple of 512).
+             * @return True if the write operation succeeded, false otherwise.
              */
             inline bool write(FileHandle &handle, const uint8_t *buffer, uint32_t length)
             {
                 if (!handle.is_open)
                     return false;
-                // Note: A true implementation needs a 512-byte static buffer here.
-                // Once 512 bytes are accumulated, you execute CMD24 (Write Single Block)
-                // For simplicity, assuming length == 512 for block writes:
 
-                if (length == 512)
+                if (length == 0 || (length % 512) != 0)
                 {
-                    send_sd_command(CMD_WRITE_SINGLE_BLOCK, handle.current_sector);
-                    wait_sd_ready();
-                    // Write the 512 bytes into the Data Port (usually a shared buffer register)
-                    // volatile uint32_t* sd_data_port = (volatile uint32_t*)SOME_DATA_REGISTER;
-                    // for(int i=0; i<128; i++) {
-                    //     sd_data_port[i] = ((uint32_t*)buffer)[i];
-                    // }
-                    wait_sd_ready();
-                    handle.current_sector++;
-                    handle.bytes_written += 512;
+                    return false;
                 }
+
+                const uint32_t blocks_count = length / 512;
+                const unsigned char res = sdc_write_multiple_blocks(
+                    handle.current_sector,
+                    const_cast<uint8_t *>(buffer),
+                    blocks_count
+                );
+
+                if (res != 0)
+                {
+                    return false;
+                }
+
+                handle.current_sector += blocks_count;
+                handle.bytes_written += length;
                 return true;
             }
 
             /**
              * @brief Closes the file handle and finalizes SD card writes.
+             * @param[in,out] handle Reference to the FileHandle to close.
              */
             inline void close(FileHandle &handle)
             {
                 if (!handle.is_open)
                     return;
 
-                // If we were using CMD25 (Multi-block write), send CMD12 to stop transmission
-                // send_sd_command(CMD_STOP_TRANSMISSION, 0);
-                // wait_sd_ready();
                 handle.is_open = false;
+                TurnOffLeds();
             }
 
         } // namespace SD

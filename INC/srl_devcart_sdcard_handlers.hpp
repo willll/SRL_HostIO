@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <srl.hpp>
+#include <srl_endian.hpp>
 #include "srl_devcart_hostio.hpp"
 #include "srl_devcart_sdcard_crc.hpp"
 #include "srl_devcart_sdcard_backend.hpp"
@@ -18,6 +19,7 @@ namespace SRL
             constexpr size_t kMaxResponseBytes = 1023;
             constexpr size_t kMaxDirEntries = 96;
             constexpr size_t kMaxPathBytes = 255;
+            constexpr size_t kFileBufferSize = 1024;
 
             inline bool g_sgcReady = false;
 
@@ -50,29 +52,33 @@ namespace SRL
              * @brief Saves the current FAT file system working directory to a buffer.
              * @param buffer Pointer to the buffer where the current directory will be saved.
              * @param size Size of the buffer in bytes.
+             * @return True if the current directory was successfully retrieved; false otherwise.
              */
-            static inline void SaveCurrentDir(char *buffer, size_t size)
+            static inline bool SaveCurrentDir(char *buffer, size_t size)
             {
                 if (buffer == nullptr || size == 0)
                 {
-                    return;
+                    return false;
                 }
 
                 buffer[0] = '\0';
-                g_fatfsBackend.GetCurrentDirectory(buffer, size);
+                const bool success = g_fatfsBackend.GetCurrentDirectory(buffer, size);
                 buffer[size - 1] = '\0';
+                return success;
             }
 
             /**
              * @brief Restores the FAT file system working directory from a buffer.
              * @param buffer Pointer to the buffer containing the directory path to restore.
+             * @return True if the directory was successfully restored or no restore was needed; false otherwise.
              */
-            static inline void RestoreCurrentDir(const char *buffer)
+            static inline bool RestoreCurrentDir(const char *buffer)
             {
                 if (buffer != nullptr && buffer[0] != '\0')
                 {
-                    g_fatfsBackend.ChangeDirectory(buffer);
+                    return g_fatfsBackend.ChangeDirectory(buffer);
                 }
+                return true;
             }
 
             /**
@@ -412,6 +418,8 @@ namespace SRL
             static inline SRL::DevCart::HostIo::Status HandleCrc(const char *path, char *response,
                 size_t &responseLen)
             {
+                uint8_t buffer[kFileBufferSize];
+                uint8_t checksum = 0;
                 if (IsSdFsPath(path))
                 {
                     if (!EnsureSgclibReady())
@@ -429,8 +437,6 @@ namespace SRL
                         return SRL::DevCart::HostIo::Status::Error;
                     }
 
-                    uint8_t buffer[1024];
-                    uint8_t checksum = 0;
                     while (true)
                     {
                         size_t bytesRead = 0;
@@ -463,8 +469,6 @@ namespace SRL
                     return SRL::DevCart::HostIo::Status::Error;
                 }
 
-                uint8_t buffer[1024];
-                uint8_t checksum = 0;
                 while (true)
                 {
                     const int32_t read = file.Read(static_cast<int32_t>(sizeof(buffer)), buffer);
@@ -534,13 +538,11 @@ namespace SRL
                         file.Close();
                         return SRL::DevCart::HostIo::Status::Handled; // skip auto-response
                     }
-                    uint32_t file_size = (static_cast<uint32_t>(size_buf[0]) << 24) |
-                                         (static_cast<uint32_t>(size_buf[1]) << 16) |
-                                         (static_cast<uint32_t>(size_buf[2]) << 8) |
-                                         static_cast<uint32_t>(size_buf[3]);
+                    uint8_t size_le[4] = {size_buf[3], size_buf[2], size_buf[1], size_buf[0]};
+                    uint32_t file_size = SRL::Endian::DeserializeUint32(size_le);
 
                     // 2. Read File Data & Calculate CRC
-                    uint8_t buffer[4096];
+                    uint8_t buffer[kFileBufferSize];
                     uint32_t received = 0;
                     uint8_t checksum = 0;
                     while (received < file_size)
@@ -626,7 +628,7 @@ namespace SRL
                     SRL::DevCart::HostIo::SendResponse(SRL::DevCart::HostIo::Status::Ok, size_buf, 4);
 
                     // 2. Send File Data & Calculate CRC
-                    uint8_t buffer[4096];
+                    uint8_t buffer[kFileBufferSize];
                     uint32_t sent = 0;
                     uint8_t checksum = 0;
                     while (sent < file_size)

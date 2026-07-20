@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <utility>
 #include "srl_devcart_sdcard_lowlevel.hpp"
+#include "srl_devcart_sdcard_utilities.hpp"
 
 namespace SRL
 {
@@ -20,6 +21,13 @@ namespace SRL
              */
             namespace Backend
             {
+                using namespace SRL::DevCart::SD::Utilities;
+
+                /** @brief The prefix string used for raw SD card paths. */
+                constexpr const char kRawPathPrefix[] = "sdraw:";
+                /** @brief The size of the raw path prefix string (excluding null terminator). */
+                constexpr size_t kRawPathPrefixSize = sizeof(kRawPathPrefix) - 1;
+
                 /** @brief Appends a formatted string to a buffer, updating the length and preventing overflow.
                  *  @tparam Args Types of the formatting arguments.
                  *  @param buf The target destination string buffer.
@@ -69,85 +77,13 @@ namespace SRL
                 }
 
                 /**
-                 * @brief Converts a hexadecimal character to its numeric value.
-                 * @param c The character to convert.
-                 * @return The numeric value (0-15), or -1 if the character is not valid hex.
-                 */
-                static inline int HexDigitValue(const char c)
-                {
-                    if (c >= '0' && c <= '9')
-                        return c - '0';
-                    if (c >= 'a' && c <= 'f')
-                        return 10 + (c - 'a');
-                    if (c >= 'A' && c <= 'F')
-                        return 10 + (c - 'A');
-                    return -1;
-                }
-
-                /**
-                 * @brief Attempts to parse a 32-bit unsigned integer (decimal or hex) from a string.
-                 * @param begin The start of the string to parse.
-                 * @param end Out-parameter pointing to the first character after the parsed number.
-                 * @param value Reference to store the parsed 32-bit integer.
-                 * @return True if parsing succeeded; false otherwise.
-                 */
-                static inline bool TryParseU32(const char *begin,
-                    const char **end,
-                    uint32_t &value)
-                {
-                    if (begin == nullptr || end == nullptr)
-                    {
-                        return false;
-                    }
-
-                    int base = 10;
-                    const char *cursor = begin;
-                    if (cursor[0] == '0' && (cursor[1] == 'x' || cursor[1] == 'X'))
-                    {
-                        base = 16;
-                        cursor += 2;
-                    }
-
-                    uint32_t parsed = 0;
-                    bool consumed = false;
-                    while (*cursor != '\0')
-                    {
-                        int digit = (base == 16) ? HexDigitValue(*cursor) : ((*cursor >= '0' && *cursor <= '9') ? (*cursor - '0') : -1);
-                        if (digit < 0)
-                        {
-                            break;
-                        }
-
-                        if (parsed > ((0xFFFFFFFFUL - static_cast<uint32_t>(digit)) /
-                                         static_cast<uint32_t>(base)))
-                        {
-                            return false;
-                        }
-
-                        parsed = (parsed * static_cast<uint32_t>(base)) +
-                                 static_cast<uint32_t>(digit);
-                        consumed = true;
-                        ++cursor;
-                    }
-
-                    if (!consumed)
-                    {
-                        return false;
-                    }
-
-                    value = parsed;
-                    *end = cursor;
-                    return true;
-                }
-
-                /**
                  * @brief Checks if a path is a raw sector path starting with "sdraw:".
                  * @param path The path to check.
                  * @return True if the path starts with "sdraw:"; false otherwise.
                  */
                 static inline bool IsRawPath(const char *path)
                 {
-                    return MatchLiteral(path, "sdraw:");
+                    return MatchLiteral(path, kRawPathPrefix);
                 }
 
                 /**
@@ -161,9 +97,9 @@ namespace SRL
                     {
                         return false;
                     }
-                    return path[0] == 's' && path[1] == 'd' && path[2] == 'r' &&
-                           path[3] == 'a' && path[4] == 'w' && path[5] == ':' &&
-                           path[6] == '/' && path[7] == '\0';
+                    return MatchLiteral(path, kRawPathPrefix) &&
+                           path[kRawPathPrefixSize] == '/' &&
+                           path[kRawPathPrefixSize + 1] == '\0';
                 }
 
                 /**
@@ -182,7 +118,8 @@ namespace SRL
                         return false;
                     }
 
-                    const char *cursor = path + 6;
+                    // Skip the "sdraw:" prefix
+                    const char *cursor = path + kRawPathPrefixSize;
                     const char *end = nullptr;
                     uint32_t parsedStart = 0;
                     if (!TryParseU32(cursor, &end, parsedStart) || end == nullptr || *end != ':')
