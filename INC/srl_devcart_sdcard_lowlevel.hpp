@@ -138,7 +138,7 @@ namespace SRL
              * @param[in] size Total file size in bytes.
              * @return True if the open operation succeeded, false otherwise.
              */
-            inline bool open(FileHandle &handle, uint32_t raw_sector_start, uint32_t size)
+            static inline bool open(FileHandle &handle, uint32_t raw_sector_start, uint32_t size)
             {
                 // Check if SD card is present and not write protected
                 if (IsSdWriteProtectedOrMissing())
@@ -161,7 +161,7 @@ namespace SRL
              * @param[in] length Number of bytes to write (must be a multiple of 512).
              * @return True if the write operation succeeded, false otherwise.
              */
-            inline bool write(FileHandle &handle, const uint8_t *buffer, uint32_t length)
+            static inline bool write(FileHandle &handle, const uint8_t *buffer, uint32_t length)
             {
                 if (!handle.is_open)
                     return false;
@@ -192,7 +192,7 @@ namespace SRL
              * @brief Closes the file handle and finalizes SD card writes.
              * @param[in,out] handle Reference to the FileHandle to close.
              */
-            inline void close(FileHandle &handle)
+            static inline void close(FileHandle &handle)
             {
                 if (!handle.is_open)
                     return;

@@ -379,6 +379,18 @@ FRESULT f_close(FIL* fp)
 }
 }
 
+// Mock stubs for sgclib/sdcard low-level symbols required by srl_devcart_sdcard_lowlevel.hpp.
+// These symbols are provided by sgclib/sdcard_packet.c in production builds.
+// In the test environment we only mock them to satisfy the linker.
+extern "C" {
+    long sdc_ledset(unsigned long led, unsigned long state) { (void)led; (void)state; return 0; }
+    unsigned char sdc_write_multiple_blocks(unsigned long sector, unsigned char *buf, unsigned long count)
+    {
+        (void)sector; (void)buf; (void)count;
+        return 0; // SDC_OK
+    }
+}
+
 #include "srl_devcart_sdcard.hpp"
 #include "minunit.h"
 

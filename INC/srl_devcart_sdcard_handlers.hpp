@@ -8,6 +8,7 @@
 #include "srl_devcart_hostio.hpp"
 #include "srl_devcart_sdcard_crc.hpp"
 #include "srl_devcart_sdcard_backend.hpp"
+#include "srl_devcart_sdcard_fatfs.hpp"
 
 namespace SRL
 {

@@ -1,10 +1,10 @@
 #pragma once
 #include <cstdint>
 #include <cstddef>
-#include <cstdio>
+#include <stdio.h>
 #include <utility>
-#include "srl_devcart_sdcard_lowlevel.hpp"
 #include "srl_devcart_sdcard_utilities.hpp"
+#include "srl_devcart_sdcard_lowlevel.hpp"
 
 namespace SRL
 {
@@ -171,7 +171,9 @@ namespace SRL
                     close(handle);
                     return true;
                 }
+
             } // namespace Backend
         } // namespace SD
     } // namespace DevCart
 } // namespace SRL
+

@@ -146,7 +146,7 @@ namespace
             status = SRL::DevCart::SD::HandleRename(path, response, responseLen);
             break;
         default:
-            APPEND_FMT(response, SRL::DevCart::SD::kMaxResponseBytes + 1, responseLen,
+            SRL::DevCart::SD::Backend::AppendFmt(response, SRL::DevCart::SD::kMaxResponseBytes + 1, responseLen,
                 "[HostIo] Unsupported command: %u\n",
                 static_cast<unsigned int>(command));
             status = SRL::DevCart::HostIo::Status::Unsupported;
@@ -171,7 +171,7 @@ namespace
     }
 } // namespace
 
-#undef APPEND_FMT
+
 
 int main()
 {
