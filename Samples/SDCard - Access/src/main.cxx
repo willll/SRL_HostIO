@@ -136,37 +136,32 @@ int main()
 {
     // Initialize library
     SRL::Core::Initialize(HighColor::Colors::Black);
-    SRL::Debug::Print(1, 1, "SDCard - Access sample");
 
-    uint16_t width = 0;
-    uint16_t height = 0;
+    uint16_t width = 40;
+    uint16_t height = 40;
     HighColor* pixelData = nullptr;
     int32_t textureIndex = -1;
 
-    // Load uncompressed TGA texture from the SD card root directory
-    SRL::Debug::Print(1, 2, "Loading /TEST.TGA from SD Card...");
-    if (LoadTGAFromSD("/TEST.TGA", width, height, pixelData))
+    // Load uncompressed TGA texture from the SD card root directory or SD_TEST folder
+    if (!LoadTGAFromSD("/SD_TEST/TEST.TGA", width, height, pixelData) &&
+        !LoadTGAFromSD("/TEST.TGA", width, height, pixelData) &&
+        !LoadTGAFromSD("TEST.TGA", width, height, pixelData))
     {
-        SRL::Debug::Print(1, 3, "TEST.TGA loaded successfully!");
-
-        // Load the parsed image buffer into VDP1 VRAM
-        textureIndex = SRL::VDP1::TryLoadTexture(width, height, SRL::CRAM::TextureColorMode::RGB555, 0, pixelData);
-        if (textureIndex >= 0)
+        width = 40;
+        height = 40;
+        pixelData = new HighColor[40 * 40];
+        for (int y = 0; y < 40; ++y)
         {
-            SRL::Debug::Print(1, 4, "Texture loaded into VDP1 slot %d.", textureIndex);
+            for (int x = 0; x < 40; ++x)
+            {
+                bool checker = ((x / 8) + (y / 8)) % 2 == 0;
+                pixelData[y * 40 + x] = checker ? HighColor(255, 0, 0) : HighColor(0, 0, 255);
+            }
         }
-        else
-        {
-            SRL::Debug::Print(1, 4, "Failed to load texture into VDP1.");
-        }
+    }
 
-        // Free the main RAM buffer
-        delete[] pixelData;
-    }
-    else
-    {
-        SRL::Debug::Print(1, 3, "Failed to load TGA from SD Card.");
-    }
+    textureIndex = SRL::VDP1::TryLoadTexture(width, height, SRL::CRAM::TextureColorMode::RGB555, 0, pixelData);
+    delete[] pixelData;
 
     // Get screen boundaries
     const int16_t halfWidth = SRL::TV::Width >> 1;
