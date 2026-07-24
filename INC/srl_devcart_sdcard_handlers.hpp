@@ -666,6 +666,39 @@ namespace SRL
                     "[DoDownload] Unsupported path: %s\n", path);
                 return SRL::DevCart::HostIo::Status::Unsupported;
             }
+
+            /**
+             * @brief Handles a request from the host to synchronize a directory.
+             *
+             * @param path The path of the directory to synchronize.
+             * @param response Buffer to write the response string into.
+             * @param responseLen Reference to the length of the written response string.
+             * @return The status of the operation (e.g., Ok, Error).
+             */
+            static inline SRL::DevCart::HostIo::Status HandleSync(const char *path, char *response,
+                size_t &responseLen)
+            {
+                if (IsSdFsPath(path))
+                {
+                    if (!EnsureSgclibReady())
+                    {
+                        Backend::AppendFmt(response, kMaxResponseBytes + 1, responseLen,
+                            "[DoSync] SGCLIB init failed\n");
+                        return SRL::DevCart::HostIo::Status::Error;
+                    }
+
+                    // Ensure target folder exists or is ready for sync
+                    g_fatfsBackend.MakeDirectory(path);
+
+                    Backend::AppendFmt(response, kMaxResponseBytes + 1, responseLen,
+                        "[DoSync] Synchronizing directory: %s\n", path);
+                    return SRL::DevCart::HostIo::Status::Ok;
+                }
+
+                Backend::AppendFmt(response, kMaxResponseBytes + 1, responseLen,
+                    "[DoSync] Read-only or unsupported path: %s\n", path);
+                return SRL::DevCart::HostIo::Status::Unsupported;
+            }
         } // namespace SD
     } // namespace DevCart
 } // namespace SRL

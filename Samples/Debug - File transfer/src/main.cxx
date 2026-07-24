@@ -106,6 +106,9 @@ namespace
         case SRL::DevCart::HostIo::Command::Rename:
             commandName = "MV";
             break;
+        case SRL::DevCart::HostIo::Command::Sync:
+            commandName = "SYNC";
+            break;
         default:
             break;
         }
@@ -145,6 +148,9 @@ namespace
         case SRL::DevCart::HostIo::Command::Rename:
             status = SRL::DevCart::SD::HandleRename(path, response, responseLen);
             break;
+        case SRL::DevCart::HostIo::Command::Sync:
+            status = SRL::DevCart::SD::HandleSync(path, response, responseLen);
+            break;
         default:
             SRL::DevCart::SD::Backend::AppendFmt(response, SRL::DevCart::SD::kMaxResponseBytes + 1, responseLen,
                 "[HostIo] Unsupported command: %u\n",
@@ -177,7 +183,7 @@ int main()
 {
     SRL::Core::Initialize(HighColor::Colors::Black);
 
-    SRL::Debug::Print(1, 0, "File Transfer - FTX");
+    SRL::Debug::Print(1, 0, "File Transfer & Sync - FTX");
 
     while (true)
     {

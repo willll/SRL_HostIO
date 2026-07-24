@@ -63,7 +63,9 @@ namespace SRL
                 /** @brief Rename/move file or directory command. */
                 Rename = 7,
                 /** @brief Download file command. */
-                Download = 8
+                Download = 8,
+                /** @brief Synchronize directory command. */
+                Sync = 9
             };
 
             /**
