@@ -24,12 +24,12 @@ DSTATUS disk_initialize (
 {
     //log_out("@@@ disk_initialize STT");
 
-    //sdc_ret_t ret = sdc_init();
-    sdc_init();
+    // FatFS must see a failed init, or it mounts and works on a card that isn't there.
+    const sdc_ret_t ret = sdc_init();
 
     //log_out("@@@ disk_initialize END");
 
-    return 0;
+    return ret == SDC_OK ? 0 : STA_NOINIT;
 
 #if WINDOWS_PLATFORM == 1
 	DSTATUS sta;
@@ -88,11 +88,12 @@ DRESULT disk_read (
 {
     //log_out("@@@ disk_read STT sector[%08X] count[%u]", sector, count);
 
-    sdc_read_multiple_blocks(sector, buff, count);
+    // Report failures (SDC_TIMEOUT): with RES_OK, FatFS would trust and cache a garbage buffer.
+    const unsigned char ret = sdc_read_multiple_blocks(sector, buff, count);
 
     //log_out("@@@ disk_read END");
 
-    return RES_OK;
+    return ret == SDC_OK ? RES_OK : RES_ERROR;
 
 #if WINDOWS_PLATFORM == 1
 	DWORD nc/*, rnc*/;
@@ -134,11 +135,12 @@ DRESULT disk_write (
 {
     //log_out("@@@ disk_write STT sector[%08X] count[%u]", sector, count);
 
-    sdc_write_multiple_blocks(sector, (unsigned char*)buff, count);
+    // Report failures (SDC_TIMEOUT) so a failed write isn't counted as written.
+    const unsigned char ret = sdc_write_multiple_blocks(sector, (unsigned char*)buff, count);
 
     //log_out("@@@ disk_write END");
 
-    return RES_OK;
+    return ret == SDC_OK ? RES_OK : RES_ERROR;
 
 #if WINDOWS_PLATFORM == 1
 	DWORD nc = 0/*, rnc*/;
